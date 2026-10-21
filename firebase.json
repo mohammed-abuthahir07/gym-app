@@ -1,0 +1,27 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "gym-management-app-9b49c",
+          "appId": "1:133297722961:android:56d4795344baa303f7ca70",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "gym-management-app-9b49c",
+          "configurations": {
+            "android": "1:133297722961:android:56d4795344baa303f7ca70",
+            "web": "1:133297722961:web:599fe3361ebd5cecf7ca70",
+            "windows": "1:133297722961:web:ee309d4325e07da4f7ca70"
+          }
+        }
+      }
+    }
+  }
+}

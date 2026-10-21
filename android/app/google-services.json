@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "133297722961",
+    "project_id": "gym-management-app-9b49c",
+    "storage_bucket": "gym-management-app-9b49c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:133297722961:android:56d4795344baa303f7ca70",
+        "android_client_info": {
+          "package_name": "com.zayith.gymmanagement"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpdGEV8K6gakK6Dljro5GsOIp2ktN9qrE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

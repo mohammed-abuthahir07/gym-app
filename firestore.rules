@@ -1,0 +1,208 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function userDocExists() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (
+        (userDocExists() && (getUserData().role == 'ADMIN' || getUserData().role == 'admin')) ||
+        request.auth.token.email == 'admin@gmail.com' ||
+        request.auth.token.email.matches('.*admin.*')
+      );
+    }
+    
+    function isTrainer() {
+      return isAuthenticated() && (
+        (userDocExists() && (getUserData().role == 'TRAINER' || getUserData().role == 'trainer')) ||
+        request.auth.token.email == 'ahmed@gmail.com'
+      );
+    }
+    
+    function isMember() {
+      return isAuthenticated() && (
+        (userDocExists() && (getUserData().role == 'MEMBER' || getUserData().role == 'member')) ||
+        request.auth.token.email == 'mohammed@gmail.com'
+      );
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      // Allow user creation during self-registration with default role MEMBER, OR admin creating any user (e.g. trainers)
+      allow create: if (isAuthenticated() && request.resource.data.role == 'MEMBER' && request.auth.uid == userId) || isAdmin();
+      // Only admin can update any user, or user can update self without altering role
+      allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+    
+    // Member Profiles
+    match /member_profiles/{memberId} {
+      allow read: if isAuthenticated() && (isOwner(memberId) || isAdmin() || isTrainer());
+      allow write: if isOwner(memberId) || isAdmin();
+    }
+    
+    // Exercises
+    match /exercises/{exerciseId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // Challenges
+    match /challenges/{challengeId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // Membership Plans
+    match /plans/{planId} {
+      allow read: if true; // Publicly viewable
+      allow write: if isAdmin();
+    }
+    
+    // Promotions
+    match /promotions/{promotionId} {
+      allow read: if true; // Publicly viewable
+      allow write: if isAdmin();
+    }
+    
+    // Class Schedules
+    match /class_schedules/{scheduleId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isTrainer() || isAdmin();
+    }
+    
+    // Workout Plans
+    match /workout_plans/{planId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        (isTrainer() && resource.data.trainer_id == request.auth.uid) ||
+        (isMember() && resource.data.member_id == request.auth.uid)
+      );
+      allow create, update, delete: if isTrainer() || isAdmin();
+    }
+    
+    // Workout Completions
+    match /workout_completions/{completionId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        resource.data.member_id == request.auth.uid ||
+        isTrainer()
+      );
+      allow create: if isAuthenticated() && request.resource.data.member_id == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+    
+    // Diet Plans
+    match /diet_plans/{dietId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        (isTrainer() && resource.data.trainer_id == request.auth.uid) ||
+        (isMember() && resource.data.member_id == request.auth.uid)
+      );
+      allow create, update, delete: if isTrainer() || isAdmin();
+    }
+    
+    // Member Progress Tracking
+    match /progress/{progressId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        resource.data.member_id == request.auth.uid ||
+        isTrainer()
+      );
+      allow create, update, delete: if isAuthenticated() && (
+        request.resource.data.member_id == request.auth.uid || 
+        resource.data.member_id == request.auth.uid || 
+        isAdmin()
+      );
+    }
+    
+    // Cheat Days
+    match /cheat_days/{cheatId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        resource.data.member_id == request.auth.uid ||
+        isTrainer()
+      );
+      allow create, update, delete: if isAuthenticated() && (
+        request.resource.data.member_id == request.auth.uid || 
+        resource.data.member_id == request.auth.uid || 
+        isAdmin()
+      );
+    }
+    
+    // Messages / Conversations
+    match /messages/{messageId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        resource.data.sender_id == request.auth.uid || 
+        resource.data.receiver_id == request.auth.uid
+      );
+      allow create: if isAuthenticated() && request.resource.data.sender_id == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        resource.data.receiver_id == request.auth.uid // for marking read
+      );
+      allow delete: if isAdmin();
+    }
+    
+    // Notifications
+    match /notifications/{notifId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        resource.data.recipient_id == request.auth.uid ||
+        (resource.data.recipient_role == 'MEMBER' && isMember()) ||
+        (resource.data.recipient_role == 'TRAINER' && isTrainer())
+      );
+      allow create: if isAdmin();
+      allow update: if isAuthenticated() && resource.data.recipient_id == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+    
+    // Fees & Revenue
+    match /fees/{feeId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        (isMember() && resource.data.member_id == request.auth.uid)
+      );
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Check-ins
+    match /checkins/{checkinId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        (isMember() && resource.data.member_id == request.auth.uid) ||
+        isTrainer()
+      );
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+    
+    // Content / Articles
+    match /content/{contentId} {
+      allow read: if true; // Publicly viewable
+      allow write: if isAdmin();
+    }
+    
+    // Contact Enquiries
+    match /contacts/{contactId} {
+      allow create: if true; // Public submission
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}
