@@ -38,16 +38,48 @@ class TrainerProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      assignedMembers = await _service.getAssignedMembers(trainerId);
-      schedules = await _service.getTrainerClassSchedules(trainerId);
-      workoutPlans = await _service.getTrainerWorkoutPlans(trainerId);
-      dietPlans = await _service.getTrainerDietPlans(trainerId);
-      availableExercises = await _service.getActiveExercises();
-
-      // Counts
+      // 1. Assigned members
+      try {
+        assignedMembers = await _service.getAssignedMembers(trainerId);
+      } catch (e) {
+        debugPrint('Error getting assigned members: $e');
+        assignedMembers = [];
+      }
       assignedMembersCount = assignedMembers.length;
-      dietPlansCount = dietPlans.length;
+
+      // 2. Class schedules
+      try {
+        schedules = await _service.getTrainerClassSchedules(trainerId);
+      } catch (e) {
+        debugPrint('Error getting trainer schedules: $e');
+        schedules = [];
+      }
+
+      // 3. Workout plans
+      try {
+        workoutPlans = await _service.getTrainerWorkoutPlans(trainerId);
+      } catch (e) {
+        debugPrint('Error getting trainer workout plans: $e');
+        workoutPlans = [];
+      }
       workoutPlansCount = workoutPlans.length;
+
+      // 4. Diet plans
+      try {
+        dietPlans = await _service.getTrainerDietPlans(trainerId);
+      } catch (e) {
+        debugPrint('Error getting trainer diet plans: $e');
+        dietPlans = [];
+      }
+      dietPlansCount = dietPlans.length;
+
+      // 5. Exercises
+      try {
+        availableExercises = await _service.getActiveExercises();
+      } catch (e) {
+        debugPrint('Error getting active exercises: $e');
+        availableExercises = [];
+      }
 
       // Calculate today workouts
       final currentDay = AppDateUtils.currentDayName();
@@ -64,11 +96,16 @@ class TrainerProvider extends ChangeNotifier {
       // Load cheat days for assigned members
       cheatDays.clear();
       for (final member in assignedMembers) {
-        final memberCheatDays = await _service.getMemberCheatDays(member.id);
-        cheatDays.addAll(memberCheatDays);
+        try {
+          final memberCheatDays = await _service.getMemberCheatDays(member.id);
+          cheatDays.addAll(memberCheatDays);
+        } catch (e) {
+          debugPrint('Error loading cheat days for member ${member.id}: $e');
+        }
       }
       cheatDays.sort((a, b) => b.cheatDate.compareTo(a.cheatDate));
     } catch (e) {
+      debugPrint('TrainerProvider.loadTrainerData unexpected exception: $e');
       _errorMessage = 'Unable to load trainer workspace. Please check your connection and retry.';
     } finally {
       _isLoading = false;

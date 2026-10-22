@@ -6,6 +6,8 @@ import 'package:gymmanagement/models/workout_plan_model.dart';
 import 'package:gymmanagement/models/diet_plan_model.dart';
 import 'package:gymmanagement/models/progress_model.dart';
 import 'package:gymmanagement/models/cheat_day_model.dart';
+import 'package:gymmanagement/models/message_model.dart';
+import 'package:gymmanagement/services/firestore_service.dart';
 
 void main() {
   group('Validators Unit Tests', () {
@@ -137,6 +139,40 @@ void main() {
       );
       final cheatMap = cheat.toMap();
       expect(cheatMap['calories'], 600);
+    });
+
+    test('MessageModel serialization and roundtrip', () {
+      final now = DateTime.now();
+      final msg = MessageModel(
+        id: 'msg123',
+        senderId: 'trainer001',
+        senderRole: 'TRAINER',
+        receiverId: 'member001',
+        receiverRole: 'MEMBER',
+        message: 'Hello, great job on workouts today!',
+        isRead: false,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      final map = msg.toMap();
+      final fromMap = MessageModel.fromMap(map, 'msg123');
+
+      expect(fromMap.id, 'msg123');
+      expect(fromMap.senderId, 'trainer001');
+      expect(fromMap.receiverId, 'member001');
+      expect(fromMap.message, 'Hello, great job on workouts today!');
+      expect(fromMap.senderRole, 'TRAINER');
+      expect(fromMap.receiverRole, 'MEMBER');
+      expect(fromMap.isRead, isFalse);
+    });
+
+    test('FirestoreService.getConversationId generates deterministic ID regardless of order', () {
+      final id1 = FirestoreService.getConversationId('trainer001', 'member002');
+      final id2 = FirestoreService.getConversationId('member002', 'trainer001');
+
+      expect(id1, id2);
+      expect(id1, 'member002_trainer001');
     });
   });
 }

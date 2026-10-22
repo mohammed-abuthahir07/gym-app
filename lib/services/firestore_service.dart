@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/user_model.dart';
 import '../models/member_profile_model.dart';
@@ -212,10 +213,17 @@ class FirestoreService {
 
     final plans = <WorkoutPlanModel>[];
     for (final doc in planSnap.docs) {
-      final exerciseSnap = await doc.reference.collection('exercises').get();
-      final exercises = exerciseSnap.docs
-          .map((e) => WorkoutExerciseModel.fromMap(e.data(), e.id))
-          .toList();
+      List<WorkoutExerciseModel> exercises = [];
+      try {
+        final exerciseSnap = await doc.reference.collection('exercises').get();
+        exercises = exerciseSnap.docs
+            .map((e) => WorkoutExerciseModel.fromMap(e.data(), e.id))
+            .toList();
+      } catch (exErr) {
+        debugPrint(
+          'Failed to load exercises for member plan ${doc.id}: $exErr',
+        );
+      }
       plans.add(
         WorkoutPlanModel.fromMap(doc.data(), doc.id, exercises: exercises),
       );
@@ -226,10 +234,15 @@ class FirestoreService {
   Future<WorkoutPlanModel?> getWorkoutPlanDetails(String planId) async {
     final doc = await _db.collection('workout_plans').doc(planId).get();
     if (!doc.exists) return null;
-    final exerciseSnap = await doc.reference.collection('exercises').get();
-    final exercises = exerciseSnap.docs
-        .map((e) => WorkoutExerciseModel.fromMap(e.data(), e.id))
-        .toList();
+    List<WorkoutExerciseModel> exercises = [];
+    try {
+      final exerciseSnap = await doc.reference.collection('exercises').get();
+      exercises = exerciseSnap.docs
+          .map((e) => WorkoutExerciseModel.fromMap(e.data(), e.id))
+          .toList();
+    } catch (exErr) {
+      debugPrint('Failed to load exercises for plan $planId: $exErr');
+    }
     return WorkoutPlanModel.fromMap(doc.data()!, doc.id, exercises: exercises);
   }
 
@@ -317,36 +330,129 @@ class FirestoreService {
   }
 
   // ==========================================
-  // MESSAGES
+  // MESSAGES & CONVERSATIONS
   // ==========================================
+  static String getConversationId(String uid1, String uid2) {
+    if (uid1.compareTo(uid2) < 0) {
+      return '${uid1}_$uid2';
+    }
+    return '${uid2}_$uid1';
+  }
+
   Stream<List<MessageModel>> getConversationStream(String userA, String userB) {
-    return _db.collection('messages').snapshots().map((snap) {
-      final messages = snap.docs
-          .map((d) => MessageModel.fromMap(d.data(), d.id))
-          .where(
-            (m) =>
-                (m.senderId == userA && m.receiverId == userB) ||
-                (m.senderId == userB && m.receiverId == userA),
-          )
-          .toList();
-      messages.sort(
-        (a, b) => (a.createdAt ?? DateTime(2000)).compareTo(
-          b.createdAt ?? DateTime(2000),
-        ),
-      );
-      return messages;
-    });
+    final convId = getConversationId(userA, userB);
+    return _db
+        .collection('conversations')
+        .doc(convId)
+        .collection('messages')
+        .snapshots()
+        .map((snap) {
+          final messages = snap.docs
+              .map((d) => MessageModel.fromMap(d.data(), d.id))
+              .toList();
+          messages.sort(
+            (a, b) => (a.createdAt ?? DateTime(2000)).compareTo(
+              b.createdAt ?? DateTime(2000),
+            ),
+          );
+          return messages;
+        });
   }
 
-  Future<void> sendMessage(MessageModel model) async {
-    await _db.collection('messages').add(model.toMap());
+  Future<void> sendMessage(
+    MessageModel model, {
+    String? memberName,
+    String? trainerName,
+  }) async {
+    final convId = getConversationId(model.senderId, model.receiverId);
+    final now = DateTime.now();
+
+    final messageData = {
+      ...model.toMap(),
+      'conversation_id': convId,
+      'participants': [model.senderId, model.receiverId],
+    };
+
+    // 1. Add to conversation messages subcollection
+    await _db
+        .collection('conversations')
+        .doc(convId)
+        .collection('messages')
+        .add(messageData);
+
+    // 2. Ensure / update conversation parent document
+    final memberId = model.senderRole == 'MEMBER'
+        ? model.senderId
+        : model.receiverId;
+    final trainerId = model.senderRole == 'TRAINER'
+        ? model.senderId
+        : model.receiverId;
+
+    final convMap = <String, dynamic>{
+      'id': convId,
+      'member_id': memberId,
+      'trainer_id': trainerId,
+      'participants': [model.senderId, model.receiverId],
+      'last_message': model.message,
+      'last_sender_id': model.senderId,
+      'last_message_time': now.toIso8601String(),
+      'updated_at': now.toIso8601String(),
+    };
+    if (memberName != null && memberName.isNotEmpty) {
+      convMap['member_name'] = memberName;
+    }
+    if (trainerName != null && trainerName.isNotEmpty) {
+      convMap['trainer_name'] = trainerName;
+    }
+
+    await _db
+        .collection('conversations')
+        .doc(convId)
+        .set(convMap, SetOptions(merge: true));
+
+    // 3. Backward-compatibility: also save to root messages collection
+    try {
+      await _db.collection('messages').add(messageData);
+    } catch (e) {
+      debugPrint('Secondary root message write skipped: $e');
+    }
   }
 
-  Future<void> markMessageRead(String messageId) async {
-    await _db.collection('messages').doc(messageId).update({
-      'is_read': 1,
-      'updated_at': DateTime.now().toIso8601String(),
-    });
+  Future<void> markMessageRead(
+    String messageId, {
+    String? userA,
+    String? userB,
+  }) async {
+    if (userA != null && userB != null) {
+      final convId = getConversationId(userA, userB);
+      try {
+        await _db
+            .collection('conversations')
+            .doc(convId)
+            .collection('messages')
+            .doc(messageId)
+            .update({
+              'is_read': 1,
+              'updated_at': DateTime.now().toIso8601String(),
+            });
+      } catch (_) {}
+    }
+    try {
+      await _db.collection('messages').doc(messageId).update({
+        'is_read': 1,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    } catch (_) {}
+  }
+
+  Stream<List<Map<String, dynamic>>> getTrainerConversationsStream(
+    String trainerId,
+  ) {
+    return _db
+        .collection('conversations')
+        .where('trainer_id', isEqualTo: trainerId)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => d.data()).toList());
   }
 
   // ==========================================
@@ -395,13 +501,19 @@ class FirestoreService {
   // TRAINER SPECIFIC METHODS
   // ==========================================
   Future<List<UserModel>> getAssignedMembers(String trainerId) async {
-    final snap = await _db
-        .collection('users')
-        .where('role', isEqualTo: 'MEMBER')
-        .where('trainer_id', isEqualTo: trainerId)
-        .where('status', isEqualTo: 'ACTIVE')
-        .get();
-    return snap.docs.map((d) => UserModel.fromMap(d.data(), d.id)).toList();
+    try {
+      final snap = await _db
+          .collection('users')
+          .where('trainer_id', isEqualTo: trainerId)
+          .get();
+      return snap.docs
+          .map((d) => UserModel.fromMap(d.data(), d.id))
+          .where((u) => u.isMember && u.isActive)
+          .toList();
+    } catch (e) {
+      debugPrint('Error loading assigned members for trainer $trainerId: $e');
+      return [];
+    }
   }
 
   Future<void> createClassSchedule(ClassScheduleModel model) async {
@@ -450,10 +562,17 @@ class FirestoreService {
         .get();
     final plans = <WorkoutPlanModel>[];
     for (final doc in snap.docs) {
-      final exSnap = await doc.reference.collection('exercises').get();
-      final exercises = exSnap.docs
-          .map((e) => WorkoutExerciseModel.fromMap(e.data(), e.id))
-          .toList();
+      List<WorkoutExerciseModel> exercises = [];
+      try {
+        final exSnap = await doc.reference.collection('exercises').get();
+        exercises = exSnap.docs
+            .map((e) => WorkoutExerciseModel.fromMap(e.data(), e.id))
+            .toList();
+      } catch (exErr) {
+        debugPrint(
+          'Failed to load exercises for trainer plan ${doc.id}: $exErr',
+        );
+      }
       plans.add(
         WorkoutPlanModel.fromMap(doc.data(), doc.id, exercises: exercises),
       );

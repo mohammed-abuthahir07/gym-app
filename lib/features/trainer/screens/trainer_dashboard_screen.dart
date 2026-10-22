@@ -15,6 +15,7 @@ import 'trainer_workout_plans_screen.dart';
 import 'trainer_diet_plans_screen.dart';
 import 'trainer_schedules_screen.dart';
 import 'trainer_cheat_days_screen.dart';
+import 'trainer_members_chat_screen.dart';
 
 class TrainerDashboardScreen extends StatefulWidget {
   const TrainerDashboardScreen({super.key});
@@ -334,6 +335,13 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
         AppColors.error,
         const TrainerCheatDaysScreen(),
       ),
+      (
+        Icons.chat_bubble_outline_rounded,
+        'Chat with Members',
+        'Direct message your clients',
+        Colors.indigo,
+        const TrainerMembersChatScreen(),
+      ),
     ];
 
     return GridView.count(
@@ -418,6 +426,13 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
                   'Cheat-Day Logs',
                   () => _navFromDrawer(context, const TrainerCheatDaysScreen()),
                 ),
+                _drawerItem(
+                  context,
+                  Icons.chat_bubble_outline_rounded,
+                  'Chat with Members',
+                  () =>
+                      _navFromDrawer(context, const TrainerMembersChatScreen()),
+                ),
                 const Divider(),
                 _drawerItem(
                   context,
@@ -460,4 +475,3 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
     );
   }
 }
-

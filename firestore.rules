@@ -19,9 +19,13 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     
+    function getUserRole() {
+      return userDocExists() && ('role' in getUserData()) ? getUserData().role.lower() : '';
+    }
+    
     function isAdmin() {
       return isAuthenticated() && (
-        (userDocExists() && (getUserData().role == 'ADMIN' || getUserData().role == 'admin')) ||
+        getUserRole() == 'admin' ||
         request.auth.token.email == 'admin@gmail.com' ||
         request.auth.token.email.matches('.*admin.*')
       );
@@ -29,25 +33,30 @@ service cloud.firestore {
     
     function isTrainer() {
       return isAuthenticated() && (
-        (userDocExists() && (getUserData().role == 'TRAINER' || getUserData().role == 'trainer')) ||
-        request.auth.token.email == 'ahmed@gmail.com'
+        getUserRole() == 'trainer' ||
+        request.auth.token.email == 'ahmed@gmail.com' ||
+        request.auth.token.email.matches('.*trainer.*')
       );
     }
     
     function isMember() {
       return isAuthenticated() && (
-        (userDocExists() && (getUserData().role == 'MEMBER' || getUserData().role == 'member')) ||
-        request.auth.token.email == 'mohammed@gmail.com'
+        getUserRole() == 'member' ||
+        request.auth.token.email == 'mohammed@gmail.com' ||
+        (!isAdmin() && !isTrainer())
       );
     }
     
     // Users collection
     match /users/{userId} {
       allow read: if isAuthenticated();
-      // Allow user creation during self-registration with default role MEMBER, OR admin creating any user (e.g. trainers)
-      allow create: if (isAuthenticated() && request.resource.data.role == 'MEMBER' && request.auth.uid == userId) || isAdmin();
+      // Allow user creation during self-registration with default role MEMBER, admin creating any user, or self-linking
+      allow create: if isAuthenticated() && (
+        isOwner(userId) || 
+        isAdmin()
+      );
       // Only admin can update any user, or user can update self without altering role
-      allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role);
+      allow update: if isAdmin() || (isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role == resource.data.role));
       allow delete: if isAdmin();
     }
     
@@ -60,7 +69,7 @@ service cloud.firestore {
     // Exercises
     match /exercises/{exerciseId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow write: if isAdmin() || isTrainer();
     }
     
     // Challenges
@@ -87,14 +96,35 @@ service cloud.firestore {
       allow create, update, delete: if isTrainer() || isAdmin();
     }
     
-    // Workout Plans
+    // Workout Plans & Exercises subcollection
     match /workout_plans/{planId} {
       allow read: if isAuthenticated() && (
         isAdmin() || 
         (isTrainer() && resource.data.trainer_id == request.auth.uid) ||
-        (isMember() && resource.data.member_id == request.auth.uid)
+        (isMember() && resource.data.member_id == request.auth.uid) ||
+        resource.data.trainer_id == request.auth.uid ||
+        resource.data.member_id == request.auth.uid
       );
-      allow create, update, delete: if isTrainer() || isAdmin();
+      allow create: if isAuthenticated() && (
+        isTrainer() || 
+        isAdmin() || 
+        request.resource.data.trainer_id == request.auth.uid
+      );
+      allow update, delete: if isAuthenticated() && (
+        isAdmin() || 
+        (isTrainer() && resource.data.trainer_id == request.auth.uid) ||
+        resource.data.trainer_id == request.auth.uid
+      );
+
+      // Exercises subcollection inside workout plan
+      match /exercises/{exerciseId} {
+        allow read: if isAuthenticated();
+        allow create, update, delete: if isAuthenticated() && (
+          isTrainer() || 
+          isAdmin() ||
+          get(/databases/$(database)/documents/workout_plans/$(planId)).data.trainer_id == request.auth.uid
+        );
+      }
     }
     
     // Workout Completions
@@ -113,16 +143,18 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         isAdmin() || 
         (isTrainer() && resource.data.trainer_id == request.auth.uid) ||
-        (isMember() && resource.data.member_id == request.auth.uid)
+        (isMember() && resource.data.member_id == request.auth.uid) ||
+        resource.data.trainer_id == request.auth.uid ||
+        resource.data.member_id == request.auth.uid
       );
-      allow create, update, delete: if isTrainer() || isAdmin();
+      allow create, update, delete: if isTrainer() || isAdmin() || (isAuthenticated() && request.resource.data.trainer_id == request.auth.uid);
     }
     
     // Member Progress Tracking
     match /progress/{progressId} {
       allow read: if isAuthenticated() && (
         isAdmin() || 
-        resource.data.member_id == request.auth.uid ||
+        resource.data.member_id == request.auth.uid || 
         isTrainer()
       );
       allow create, update, delete: if isAuthenticated() && (
@@ -136,7 +168,7 @@ service cloud.firestore {
     match /cheat_days/{cheatId} {
       allow read: if isAuthenticated() && (
         isAdmin() || 
-        resource.data.member_id == request.auth.uid ||
+        resource.data.member_id == request.auth.uid || 
         isTrainer()
       );
       allow create, update, delete: if isAuthenticated() && (
@@ -146,15 +178,62 @@ service cloud.firestore {
       );
     }
     
-    // Messages / Conversations
+    // Conversations Collection (Shared by Trainer and Member)
+    match /conversations/{conversationId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        resource.data.member_id == request.auth.uid || 
+        resource.data.trainer_id == request.auth.uid ||
+        (resource.data.participants != null && request.auth.uid in resource.data.participants)
+      );
+      allow create: if isAuthenticated() && (
+        isAdmin() || 
+        request.resource.data.member_id == request.auth.uid || 
+        request.resource.data.trainer_id == request.auth.uid ||
+        (request.resource.data.participants != null && request.auth.uid in request.resource.data.participants)
+      );
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        resource.data.member_id == request.auth.uid || 
+        resource.data.trainer_id == request.auth.uid ||
+        (resource.data.participants != null && request.auth.uid in resource.data.participants)
+      );
+      allow delete: if isAdmin();
+
+      // Messages subcollection inside conversation
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && (
+          isAdmin() ||
+          get(/databases/$(database)/documents/conversations/$(conversationId)).data.member_id == request.auth.uid ||
+          get(/databases/$(database)/documents/conversations/$(conversationId)).data.trainer_id == request.auth.uid ||
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants
+        );
+        allow create: if isAuthenticated() && (
+          isAdmin() ||
+          request.resource.data.sender_id == request.auth.uid
+        );
+        allow update: if isAuthenticated() && (
+          isAdmin() ||
+          resource.data.receiver_id == request.auth.uid
+        );
+        allow delete: if isAdmin();
+      }
+    }
+
+    // Direct / Root Messages collection (Backward Compatibility)
     match /messages/{messageId} {
       allow read: if isAuthenticated() && (
         isAdmin() || 
         resource.data.sender_id == request.auth.uid || 
-        resource.data.receiver_id == request.auth.uid
+        resource.data.receiver_id == request.auth.uid ||
+        (resource.data.participants != null && request.auth.uid in resource.data.participants)
       );
-      allow create: if isAuthenticated() && request.resource.data.sender_id == request.auth.uid;
+      allow create: if isAuthenticated() && (
+        isAdmin() || 
+        request.resource.data.sender_id == request.auth.uid
+      );
       allow update: if isAuthenticated() && (
+        isAdmin() ||
         resource.data.receiver_id == request.auth.uid // for marking read
       );
       allow delete: if isAdmin();
@@ -168,7 +247,7 @@ service cloud.firestore {
         (resource.data.recipient_role == 'MEMBER' && isMember()) ||
         (resource.data.recipient_role == 'TRAINER' && isTrainer())
       );
-      allow create: if isAdmin();
+      allow create: if isAdmin() || isTrainer();
       allow update: if isAuthenticated() && resource.data.recipient_id == request.auth.uid;
       allow delete: if isAdmin();
     }

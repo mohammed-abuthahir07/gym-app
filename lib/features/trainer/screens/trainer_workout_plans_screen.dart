@@ -9,6 +9,7 @@ import '../../../models/user_model.dart';
 import '../../../providers/trainer_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/loading_view.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
 
@@ -241,9 +242,18 @@ class _TrainerWorkoutPlansScreenState extends State<TrainerWorkoutPlansScreen> {
                   }
                 } catch (e) {
                   setDialogState(() => isSaving = false);
+                  final errStr = e.toString().toLowerCase();
+                  String friendlyMsg =
+                      'Failed to assign workout plan. Please try again.';
+                  if (errStr.contains('permission-denied')) {
+                    friendlyMsg = 'Permission error: You do not have permission to assign workout plans to this member.';
+                  } else if (errStr.contains('network') ||
+                      errStr.contains('unavailable')) {
+                    friendlyMsg = 'Network error: Please check your connection and retry.';
+                  }
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Error: $e'),
+                      content: Text(friendlyMsg),
                       backgroundColor: AppColors.error,
                     ),
                   );
@@ -393,9 +403,18 @@ class _TrainerWorkoutPlansScreenState extends State<TrainerWorkoutPlansScreen> {
                   }
                 } catch (e) {
                   setDialogState(() => isSaving = false);
+                  final errStr = e.toString().toLowerCase();
+                  String friendlyMsg =
+                      'Failed to assign workout plan. Please try again.';
+                  if (errStr.contains('permission-denied')) {
+                    friendlyMsg = 'Permission error: You do not have permission to assign workout plans to this member.';
+                  } else if (errStr.contains('network') ||
+                      errStr.contains('unavailable')) {
+                    friendlyMsg = 'Network error: Please check your connection and retry.';
+                  }
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Error: $e'),
+                      content: Text(friendlyMsg),
                       backgroundColor: AppColors.error,
                     ),
                   );
@@ -421,7 +440,24 @@ class _TrainerWorkoutPlansScreenState extends State<TrainerWorkoutPlansScreen> {
         icon: const Icon(Icons.add),
         label: const Text('New Plan'),
       ),
-      body: trainer.workoutPlans.isEmpty
+      body: trainer.isLoading
+          ? const LoadingView(message: 'Loading workout plans...')
+          : trainer.errorMessage != null && trainer.workoutPlans.isEmpty
+          ? EmptyState(
+              title: 'Unable to Load Plans',
+              message: trainer.errorMessage!,
+              icon: Icons.wifi_off_rounded,
+              action: ElevatedButton.icon(
+                onPressed: () {
+                  if (auth.currentUser != null) {
+                    trainer.loadTrainerData(auth.currentUser!.id);
+                  }
+                },
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Retry'),
+              ),
+            )
+          : trainer.workoutPlans.isEmpty
           ? const EmptyState(
               title: 'No Workout Plans',
               message: 'Create structured workout routines and assign them to your members.',

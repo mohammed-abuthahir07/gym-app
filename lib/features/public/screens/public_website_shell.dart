@@ -320,7 +320,11 @@ class _PublicWebsiteShellState extends State<PublicWebsiteShell> {
                 ),
                 _drawerTile(Icons.photo_library_rounded, 'Gallery', 4),
                 // _drawerTile(Icons.sports_rounded, 'Trainers', 5), // Removed
-                _drawerTile(Icons.contact_mail_rounded, 'Contact Us', 5), // Index shifted from 6 to 5
+                _drawerTile(
+                  Icons.contact_mail_rounded,
+                  'Contact Us',
+                  5,
+                ), // Index shifted from 6 to 5
                 const Divider(height: 24),
                 ListTile(
                   leading: const Icon(
