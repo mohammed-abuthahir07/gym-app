@@ -157,3 +157,11 @@ flutter build apk --debug
 
 APK output location:
 `build/app/outputs/flutter-apk/app-debug.apk`
+
+
+admin credential : admin@gmail.com , pass : Admin@123
+trainer credential :
+1. ahmed@gmail.com, pass : Trainer@123
+2. jerome@gmail.com, pass : Trainer@123
+member : 
+1.noor@gmail.com, pass : noor123
