@@ -675,7 +675,7 @@ class _PublicHomeTabState extends State<PublicHomeTab> {
                         );
                       },
                       child: const Text(
-                        'Member / Staff Sign In',
+                        'Sign In',
                         style: TextStyle(fontSize: 12),
                       ),
                     ),
