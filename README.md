@@ -26,6 +26,8 @@ Per the functional specification , the default accounts configured for developme
 | **Administrator** | `admin@gmail.com` | `Admin@123` | Full Admin Portal & System Management |
 | **Trainer** | `ahmed@gmail.com` | `Trainer@123` | Trainer Hub, Member Assignment & Workouts |
 | **Member** | `mohammed@gmail.com` | `Member@123` | Member Portal, Diets, Progress & Schedules |
+noor@gmail.com
+noor123  
 
 > **Security Note:** In production, remember to change these default passwords or reset credentials via the Firebase Authentication Console.
 

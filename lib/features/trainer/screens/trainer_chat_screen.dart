@@ -22,6 +22,37 @@ class _TrainerChatScreenState extends State<TrainerChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final FirestoreService _service = FirestoreService();
   bool _isSending = false;
+  Future<String>? _conversationReady;
+  Stream<List<MessageModel>>? _messageStream;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final trainer = auth.currentUser;
+      if (trainer == null || widget.member.id.isEmpty) return;
+      setState(() {
+        _conversationReady = _service
+            .ensureConversation(
+              memberId: widget.member.id,
+              trainerId: trainer.id,
+              memberName: widget.member.name,
+              trainerName: trainer.name,
+              memberEmail: widget.member.email,
+              trainerEmail: trainer.email,
+            )
+            .then((convId) {
+              _messageStream = _service.getConversationStream(
+                trainer.id,
+                widget.member.id,
+              );
+              return convId;
+            });
+      });
+    });
+  }
 
   @override
   void dispose() {
@@ -50,8 +81,6 @@ class _TrainerChatScreenState extends State<TrainerChatScreen> {
     final currentTrainer = auth.currentUser;
 
     setState(() => _isSending = true);
-    final savedText = text;
-    _messageController.clear();
 
     final now = DateTime.now();
     final msg = MessageModel(
@@ -60,7 +89,7 @@ class _TrainerChatScreenState extends State<TrainerChatScreen> {
       senderRole: 'TRAINER',
       receiverId: widget.member.id,
       receiverRole: 'MEMBER',
-      message: savedText,
+      message: text,
       isRead: false,
       createdAt: now,
       updatedAt: now,
@@ -72,9 +101,9 @@ class _TrainerChatScreenState extends State<TrainerChatScreen> {
         memberName: widget.member.name,
         trainerName: currentTrainer?.name,
       );
+      _messageController.clear();
       _scrollToBottom();
     } catch (e) {
-      _messageController.text = savedText;
       if (mounted) {
         final errStr = e.toString().toLowerCase();
         String displayMsg = 'Failed to send message. Please retry.';
@@ -93,6 +122,46 @@ class _TrainerChatScreenState extends State<TrainerChatScreen> {
         setState(() => _isSending = false);
       }
     }
+  }
+
+  Widget _conversationError(String error, {required VoidCallback onRetry}) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.wifi_off_rounded,
+              size: 48,
+              color: AppColors.textMuted,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Unable to load conversation',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              error.toLowerCase().contains('permission-denied')
+                  ? 'Access restricted: Please check your trainer account permissions.'
+                  : 'Please check your connection and retry.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -122,165 +191,173 @@ class _TrainerChatScreenState extends State<TrainerChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: StreamBuilder<List<MessageModel>>(
-              stream: _service.getConversationStream(
-                trainerId,
-                widget.member.id,
-              ),
-              builder: (ctx, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+            child: FutureBuilder<String>(
+              future: _conversationReady,
+              builder: (ctx, convSnapshot) {
+                if (_conversationReady == null ||
+                    convSnapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.wifi_off_rounded,
-                            size: 48,
-                            color: AppColors.textMuted,
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Unable to load conversation',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            snapshot.error.toString().toLowerCase().contains(
-                                  'permission-denied',
-                                )
-                                ? 'Access restricted: Please check your trainer account permissions.'
-                                : 'Please check your connection and retry.',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 13,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: () => setState(() {}),
-                            icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Retry'),
-                          ),
-                        ],
-                      ),
-                    ),
+                if (convSnapshot.hasError) {
+                  return _conversationError(
+                    convSnapshot.error.toString(),
+                    onRetry: () {
+                      final trainer = auth.currentUser;
+                      if (trainer == null) return;
+                      setState(() {
+                        _conversationReady = _service
+                            .ensureConversation(
+                              memberId: widget.member.id,
+                              trainerId: trainer.id,
+                              memberName: widget.member.name,
+                              trainerName: trainer.name,
+                              memberEmail: widget.member.email,
+                              trainerEmail: trainer.email,
+                            )
+                            .then((convId) {
+                              _messageStream = _service.getConversationStream(
+                                trainer.id,
+                                widget.member.id,
+                              );
+                              return convId;
+                            });
+                      });
+                    },
                   );
                 }
 
-                final messages = snapshot.data ?? [];
-                if (messages.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.chat_bubble_outline_rounded,
-                            size: 56,
-                            color: AppColors.primary.withValues(alpha: 0.6),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Conversation with ${widget.member.name}',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'No messages yet. Send a message to start conversation!',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 13,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+                return StreamBuilder<List<MessageModel>>(
+                  stream:
+                      _messageStream ??
+                      _service.getConversationStream(
+                        trainerId,
+                        widget.member.id,
                       ),
-                    ),
-                  );
-                }
+                  builder: (ctx, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
 
-                _scrollToBottom();
-
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: messages.length,
-                  itemBuilder: (ctx, idx) {
-                    final m = messages[idx];
-                    final isMe = m.senderId == trainerId;
-
-                    // Mark as read if not read and received by me
-                    if (!isMe && !m.isRead) {
-                      _service.markMessageRead(
-                        m.id,
-                        userA: trainerId,
-                        userB: widget.member.id,
+                    if (snapshot.hasError) {
+                      return _conversationError(
+                        snapshot.error.toString(),
+                        onRetry: () => setState(() {
+                          _messageStream = _service.getConversationStream(
+                            trainerId,
+                            widget.member.id,
+                          );
+                        }),
                       );
                     }
 
-                    return Align(
-                      alignment: isMe
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isMe
-                              ? AppColors.primary
-                              : AppColors.surfaceCard,
-                          borderRadius: BorderRadius.circular(12),
-                          border: isMe
-                              ? null
-                              : Border.all(color: AppColors.cardBorder),
-                        ),
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.75,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: isMe
-                              ? CrossAxisAlignment.end
-                              : CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              m.message,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
+                    final messages = snapshot.data ?? [];
+                    if (messages.isEmpty) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.chat_bubble_outline_rounded,
+                                size: 56,
+                                color: AppColors.primary.withValues(alpha: 0.6),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              AppDateUtils.formatTime(m.createdAt),
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: isMe
-                                    ? Colors.white70
-                                    : AppColors.textMuted,
+                              const SizedBox(height: 16),
+                              Text(
+                                'Conversation with ${widget.member.name}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 6),
+                              const Text(
+                                'No messages yet. Send a message to start conversation!',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                      );
+                    }
+
+                    _scrollToBottom();
+
+                    return ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: messages.length,
+                      itemBuilder: (ctx, idx) {
+                        final m = messages[idx];
+                        final isMe = m.senderId == trainerId;
+
+                        // Mark as read if not read and received by me
+                        if (!isMe && !m.isRead) {
+                          _service.markMessageRead(
+                            m.id,
+                            userA: trainerId,
+                            userB: widget.member.id,
+                          );
+                        }
+
+                        return Align(
+                          alignment: isMe
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isMe
+                                  ? AppColors.primary
+                                  : AppColors.surfaceCard,
+                              borderRadius: BorderRadius.circular(12),
+                              border: isMe
+                                  ? null
+                                  : Border.all(color: AppColors.cardBorder),
+                            ),
+                            constraints: BoxConstraints(
+                              maxWidth:
+                                  MediaQuery.of(context).size.width * 0.75,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: isMe
+                                  ? CrossAxisAlignment.end
+                                  : CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  m.message,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  AppDateUtils.formatTime(m.createdAt),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: isMe
+                                        ? Colors.white70
+                                        : AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
                 );

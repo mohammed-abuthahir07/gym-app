@@ -240,6 +240,180 @@ class _TrainerDietPlansScreenState extends State<TrainerDietPlansScreen> {
     );
   }
 
+  void _showEditDietDialog(DietPlanModel plan) {
+    final trainer = Provider.of<TrainerProvider>(context, listen: false);
+
+    String dietDay = plan.dietDay;
+    String mealType = plan.mealType;
+    final foodCtrl = TextEditingController(text: plan.foodName);
+    final calCtrl = TextEditingController(text: plan.calories.toString());
+    final proteinCtrl = TextEditingController(
+      text: plan.protein.toStringAsFixed(0),
+    );
+    final notesCtrl = TextEditingController(text: plan.notes);
+    final formKey = GlobalKey<FormState>();
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(
+            'Edit ${plan.mealType} for ${plan.memberName ?? 'Member'}',
+          ),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _days.contains(dietDay)
+                              ? dietDay
+                              : _days.first,
+                          isExpanded: true,
+                          decoration: const InputDecoration(labelText: 'Day'),
+                          items: _days
+                              .map(
+                                (d) => DropdownMenuItem(
+                                  value: d,
+                                  child: Text(
+                                    d,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) setDialogState(() => dietDay = v);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _meals.contains(mealType)
+                              ? mealType
+                              : _meals.first,
+                          isExpanded: true,
+                          decoration: const InputDecoration(labelText: 'Meal'),
+                          items: _meals
+                              .map(
+                                (m) => DropdownMenuItem(
+                                  value: m,
+                                  child: Text(
+                                    m,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) setDialogState(() => mealType = v);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    controller: foodCtrl,
+                    label: 'Food Item & Description',
+                    validator: (v) =>
+                        AppValidators.requiredField(v, 'Food name'),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: CustomTextField(
+                          controller: calCtrl,
+                          label: 'Calories (kcal)',
+                          keyboardType: TextInputType.number,
+                          validator: (v) =>
+                              AppValidators.positiveNumber(v, 'Calories'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: CustomTextField(
+                          controller: proteinCtrl,
+                          label: 'Protein (g)',
+                          keyboardType: TextInputType.number,
+                          validator: (v) =>
+                              AppValidators.positiveNumber(v, 'Protein'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    controller: notesCtrl,
+                    label: 'Notes / Instructions',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            CustomButton(
+              text: 'Save',
+              isLoading: isSaving,
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                setDialogState(() => isSaving = true);
+                try {
+                  final updated = DietPlanModel(
+                    id: plan.id,
+                    trainerId: plan.trainerId,
+                    trainerName: plan.trainerName,
+                    trainerEmail: plan.trainerEmail,
+                    memberId: plan.memberId,
+                    memberName: plan.memberName,
+                    memberEmail: plan.memberEmail,
+                    dietDay: dietDay,
+                    mealType: mealType,
+                    foodName: foodCtrl.text.trim(),
+                    calories: int.parse(calCtrl.text.trim()),
+                    protein: double.parse(proteinCtrl.text.trim()),
+                    notes: notesCtrl.text.trim(),
+                    createdAt: plan.createdAt,
+                    updatedAt: DateTime.now(),
+                  );
+                  await trainer.updateDietPlan(updated);
+                  if (mounted) {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Diet plan updated!'),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  setDialogState(() => isSaving = false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final trainer = Provider.of<TrainerProvider>(context);
@@ -305,13 +479,31 @@ class _TrainerDietPlansScreenState extends State<TrainerDietPlansScreen> {
                           ),
                       ],
                     ),
-                    trailing: IconButton(
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        color: AppColors.error,
-                      ),
-                      onPressed: () =>
-                          trainer.deleteDietPlan(d.id, auth.currentUser!.id),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(
+                            Icons.edit_outlined,
+                            color: AppColors.textSecondary,
+                            size: 20,
+                          ),
+                          tooltip: 'Edit Diet Plan',
+                          onPressed: () => _showEditDietDialog(d),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: AppColors.error,
+                            size: 20,
+                          ),
+                          tooltip: 'Delete Diet Plan',
+                          onPressed: () => trainer.deleteDietPlan(
+                            d.id,
+                            auth.currentUser!.id,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 );

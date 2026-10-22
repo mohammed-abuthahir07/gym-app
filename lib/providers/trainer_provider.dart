@@ -24,6 +24,7 @@ class TrainerProvider extends ChangeNotifier {
   List<DietPlanModel> dietPlans = [];
   List<CheatDayModel> cheatDays = [];
   List<ExerciseModel> availableExercises = [];
+  Map<String, int> memberCheckInDays = {};
 
   // Metrics
   int assignedMembersCount = 0;
@@ -104,6 +105,17 @@ class TrainerProvider extends ChangeNotifier {
         }
       }
       cheatDays.sort((a, b) => b.cheatDate.compareTo(a.cheatDate));
+
+      // Load check-in counts for assigned members (API 70)
+      memberCheckInDays.clear();
+      for (final member in assignedMembers) {
+        try {
+          final count = await _service.getMemberCheckInDays(member.id);
+          memberCheckInDays[member.id] = count;
+        } catch (e) {
+          debugPrint('Error loading check-ins for member ${member.id}: $e');
+        }
+      }
     } catch (e) {
       debugPrint('TrainerProvider.loadTrainerData unexpected exception: $e');
       _errorMessage = 'Unable to load trainer workspace. Please check your connection and retry.';

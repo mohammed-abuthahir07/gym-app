@@ -129,12 +129,140 @@ class FirestoreService {
   // ==========================================
   // EXERCISES & CHALLENGES (MEMBER VIEW)
   // ==========================================
+  static final List<ExerciseModel> defaultGymExercises = [
+    ExerciseModel(
+      id: 'ex_bench_press',
+      name: 'Flat Barbell Bench Press',
+      muscleGroup: 'Chest',
+      equipment: 'Barbell & Bench',
+      instructions:
+          'Lower barbell to mid-chest with control, press up explosively.',
+      imageUrl: '',
+      videoUrl: '',
+      difficulty: 'INTERMEDIATE',
+    ),
+    ExerciseModel(
+      id: 'ex_incline_dumbbell',
+      name: 'Incline Dumbbell Press',
+      muscleGroup: 'Upper Chest',
+      equipment: 'Dumbbells & Incline Bench',
+      instructions:
+          'Press dumbbells up at a 30-degree incline keeping core braced.',
+      imageUrl: '',
+      videoUrl: '',
+      difficulty: 'INTERMEDIATE',
+    ),
+    ExerciseModel(
+      id: 'ex_squats',
+      name: 'Barbell Back Squat',
+      muscleGroup: 'Legs / Quads',
+      equipment: 'Barbell & Squat Rack',
+      instructions:
+          'Descend to parallel, keep chest tall and drive through heels.',
+      imageUrl: '',
+      videoUrl: '',
+      difficulty: 'INTERMEDIATE',
+    ),
+    ExerciseModel(
+      id: 'ex_deadlift',
+      name: 'Conventional Deadlift',
+      muscleGroup: 'Back & Hamstrings',
+      equipment: 'Barbell & Plates',
+      instructions: 'Hinge hips back, brace lats, pull bar vertically keeping back neutral.',
+      imageUrl: '',
+      videoUrl: '',
+      difficulty: 'DIFFICULT',
+    ),
+    ExerciseModel(
+      id: 'ex_pullups',
+      name: 'Overhand Pull-Ups',
+      muscleGroup: 'Back & Lats',
+      equipment: 'Pull-Up Bar',
+      instructions:
+          'Pull chest toward bar squeezing lats at the top, control descent.',
+      imageUrl: '',
+      videoUrl: '',
+      difficulty: 'INTERMEDIATE',
+    ),
+    ExerciseModel(
+      id: 'ex_lat_pulldown',
+      name: 'Cable Lat Pulldown',
+      muscleGroup: 'Lats & Upper Back',
+      equipment: 'Cable Machine',
+      instructions:
+          'Pull bar to collarbone squeezing shoulder blades together.',
+      imageUrl: '',
+      videoUrl: '',
+      difficulty: 'BEGINNER',
+    ),
+    ExerciseModel(
+      id: 'ex_shoulder_press',
+      name: 'Dumbbell Shoulder Press',
+      muscleGroup: 'Shoulders',
+      equipment: 'Dumbbells',
+      instructions:
+          'Press overhead from ear level without hyperextending lower back.',
+      imageUrl: '',
+      videoUrl: '',
+      difficulty: 'BEGINNER',
+    ),
+    ExerciseModel(
+      id: 'ex_barbell_curl',
+      name: 'Barbell Bicep Curl',
+      muscleGroup: 'Biceps',
+      equipment: 'EZ / Straight Barbell',
+      instructions:
+          'Keep elbows tucked to sides, curl bar smoothly up to shoulders.',
+      imageUrl: '',
+      videoUrl: '',
+      difficulty: 'BEGINNER',
+    ),
+    ExerciseModel(
+      id: 'ex_tricep_pushdown',
+      name: 'Cable Tricep Rope Pushdown',
+      muscleGroup: 'Triceps',
+      equipment: 'Cable & Rope Attachment',
+      instructions:
+          'Extend forearms down and spread rope ends at full contraction.',
+      imageUrl: '',
+      videoUrl: '',
+      difficulty: 'BEGINNER',
+    ),
+    ExerciseModel(
+      id: 'ex_leg_press',
+      name: '45-Degree Leg Press',
+      muscleGroup: 'Quads & Glutes',
+      equipment: 'Leg Press Machine',
+      instructions: 'Feet shoulder-width apart, lower sled with control without locking knees.',
+      imageUrl: '',
+      videoUrl: '',
+      difficulty: 'BEGINNER',
+    ),
+    ExerciseModel(
+      id: 'ex_plank',
+      name: 'Forearm Core Plank',
+      muscleGroup: 'Core / Abs',
+      equipment: 'Floor Mat',
+      instructions:
+          'Hold straight line from head to heels, squeezing glutes and abs.',
+      imageUrl: '',
+      videoUrl: '',
+      difficulty: 'BEGINNER',
+    ),
+  ];
+
   Future<List<ExerciseModel>> getActiveExercises() async {
-    final snap = await _db
-        .collection('exercises')
-        .where('status', isEqualTo: 'ACTIVE')
-        .get();
-    return snap.docs.map((d) => ExerciseModel.fromMap(d.data(), d.id)).toList();
+    try {
+      final snap = await _db.collection('exercises').get();
+      final list = snap.docs
+          .map((d) => ExerciseModel.fromMap(d.data(), d.id))
+          .where((e) => e.isActive)
+          .toList();
+      if (list.isNotEmpty) return list;
+    } catch (e) {
+      debugPrint('Error getting exercises from Firestore: $e');
+    }
+    return defaultGymExercises;
   }
 
   Future<List<ChallengeModel>> getActiveChallenges() async {
@@ -339,7 +467,53 @@ class FirestoreService {
     return '${uid2}_$uid1';
   }
 
+  Future<String> ensureConversation({
+    required String memberId,
+    required String trainerId,
+    String? memberName,
+    String? trainerName,
+    String? memberEmail,
+    String? trainerEmail,
+  }) async {
+    if (memberId.isEmpty || trainerId.isEmpty) {
+      throw Exception(
+        'Cannot open conversation without both member and trainer identifiers.',
+      );
+    }
+
+    final convId = getConversationId(memberId, trainerId);
+    final now = DateTime.now();
+    final docRef = _db.collection('conversations').doc(convId);
+    final doc = await docRef.get();
+
+    if (!doc.exists) {
+      await docRef.set({
+        'id': convId,
+        'participants': [memberId, trainerId],
+        'member_id': memberId,
+        'trainer_id': trainerId,
+        'last_message': '',
+        'last_message_time': now.toIso8601String(),
+        'created_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+        if (memberName != null && memberName.isNotEmpty)
+          'member_name': memberName,
+        if (trainerName != null && trainerName.isNotEmpty)
+          'trainer_name': trainerName,
+        if (memberEmail != null && memberEmail.isNotEmpty)
+          'member_email': memberEmail,
+        if (trainerEmail != null && trainerEmail.isNotEmpty)
+          'trainer_email': trainerEmail,
+      });
+    }
+
+    return convId;
+  }
+
   Stream<List<MessageModel>> getConversationStream(String userA, String userB) {
+    if (userA.isEmpty || userB.isEmpty) {
+      return Stream.value([]);
+    }
     final convId = getConversationId(userA, userB);
     return _db
         .collection('conversations')
@@ -364,23 +538,6 @@ class FirestoreService {
     String? memberName,
     String? trainerName,
   }) async {
-    final convId = getConversationId(model.senderId, model.receiverId);
-    final now = DateTime.now();
-
-    final messageData = {
-      ...model.toMap(),
-      'conversation_id': convId,
-      'participants': [model.senderId, model.receiverId],
-    };
-
-    // 1. Add to conversation messages subcollection
-    await _db
-        .collection('conversations')
-        .doc(convId)
-        .collection('messages')
-        .add(messageData);
-
-    // 2. Ensure / update conversation parent document
     final memberId = model.senderRole == 'MEMBER'
         ? model.senderId
         : model.receiverId;
@@ -388,11 +545,31 @@ class FirestoreService {
         ? model.senderId
         : model.receiverId;
 
+    final convId = await ensureConversation(
+      memberId: memberId,
+      trainerId: trainerId,
+      memberName: memberName,
+      trainerName: trainerName,
+    );
+    final now = DateTime.now();
+
+    final messageData = {
+      ...model.toMap(),
+      'conversation_id': convId,
+      'participants': [memberId, trainerId],
+    };
+
+    await _db
+        .collection('conversations')
+        .doc(convId)
+        .collection('messages')
+        .add(messageData);
+
     final convMap = <String, dynamic>{
       'id': convId,
       'member_id': memberId,
       'trainer_id': trainerId,
-      'participants': [model.senderId, model.receiverId],
+      'participants': [memberId, trainerId],
       'last_message': model.message,
       'last_sender_id': model.senderId,
       'last_message_time': now.toIso8601String(),
@@ -410,7 +587,6 @@ class FirestoreService {
         .doc(convId)
         .set(convMap, SetOptions(merge: true));
 
-    // 3. Backward-compatibility: also save to root messages collection
     try {
       await _db.collection('messages').add(messageData);
     } catch (e) {
@@ -448,6 +624,9 @@ class FirestoreService {
   Stream<List<Map<String, dynamic>>> getTrainerConversationsStream(
     String trainerId,
   ) {
+    if (trainerId.isEmpty) {
+      return Stream.value([]);
+    }
     return _db
         .collection('conversations')
         .where('trainer_id', isEqualTo: trainerId)
@@ -588,44 +767,67 @@ class FirestoreService {
   }
 
   Future<void> deleteWorkoutPlan(String planId) async {
-    final exSnap = await _db
-        .collection('workout_plans')
-        .doc(planId)
-        .collection('exercises')
-        .get();
-    for (final doc in exSnap.docs) {
-      await doc.reference.delete();
+    final planRef = _db.collection('workout_plans').doc(planId);
+    try {
+      final exSnap = await planRef.collection('exercises').get();
+      for (final doc in exSnap.docs) {
+        await doc.reference.delete();
+      }
+    } catch (e) {
+      debugPrint('Error deleting subcollection exercises for plan $planId: $e');
     }
-    await _db.collection('workout_plans').doc(planId).delete();
+    await planRef.delete();
   }
 
   Future<void> addExerciseToWorkoutPlan(WorkoutExerciseModel exercise) async {
-    await _db
-        .collection('workout_plans')
-        .doc(exercise.workoutPlanId)
-        .collection('exercises')
-        .add(exercise.toMap());
+    if (exercise.workoutPlanId.isEmpty) {
+      throw Exception('Workout plan is missing.');
+    }
+
+    final planRef = _db.collection('workout_plans').doc(exercise.workoutPlanId);
+    final existing = await planRef.collection('exercises').get();
+    final alreadyAdded = existing.docs.any((doc) {
+      final data = doc.data();
+      final sameDay =
+          (data['workout_day'] ?? '').toString().toUpperCase() ==
+          exercise.workoutDay.toUpperCase();
+      if (!sameDay) return false;
+      if (exercise.exerciseId.isNotEmpty) {
+        return (data['exercise_id'] ?? '') == exercise.exerciseId;
+      }
+      return (data['exercise_name'] ?? '').toString().trim().toLowerCase() ==
+          exercise.exerciseName.trim().toLowerCase();
+    });
+    if (alreadyAdded) {
+      throw Exception(
+        'This exercise is already in the routine for ${exercise.workoutDay}.',
+      );
+    }
+
+    await planRef.collection('exercises').add(exercise.toMap());
+    try {
+      await planRef.update({'updated_at': DateTime.now().toIso8601String()});
+    } catch (e) {
+      debugPrint('Plan timestamp update skipped: $e');
+    }
   }
 
   Future<void> updateWorkoutPlanExercise(WorkoutExerciseModel exercise) async {
-    await _db
-        .collection('workout_plans')
-        .doc(exercise.workoutPlanId)
+    final planRef = _db.collection('workout_plans').doc(exercise.workoutPlanId);
+    await planRef
         .collection('exercises')
         .doc(exercise.id)
         .update(exercise.toMap());
+    await planRef.update({'updated_at': DateTime.now().toIso8601String()});
   }
 
   Future<void> deleteWorkoutPlanExercise(
     String planId,
     String exerciseId,
   ) async {
-    await _db
-        .collection('workout_plans')
-        .doc(planId)
-        .collection('exercises')
-        .doc(exerciseId)
-        .delete();
+    final planRef = _db.collection('workout_plans').doc(planId);
+    await planRef.collection('exercises').doc(exerciseId).delete();
+    await planRef.update({'updated_at': DateTime.now().toIso8601String()});
   }
 
   Future<void> createDietPlan(DietPlanModel model) async {
