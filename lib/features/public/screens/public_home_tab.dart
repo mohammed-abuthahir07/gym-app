@@ -58,10 +58,13 @@ class _PublicHomeTabState extends State<PublicHomeTab> {
     final theme = Theme.of(context);
 
     final List<String> heroImages = const [
-      'assets/public/img.jpg',
+      'assets/public/back.png',
+      'assets/public/img6.jpg',
       'assets/public/img2.jpg',
       'assets/public/img3.jpg',
       'assets/public/img4.jpg',
+      'assets/public/img5.jpg',
+      'assets/public/img.jpg',
     ];
 
     return SingleChildScrollView(
