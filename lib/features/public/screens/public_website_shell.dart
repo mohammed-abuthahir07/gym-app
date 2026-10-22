@@ -11,7 +11,7 @@ import 'public_about_screen.dart';
 import 'public_plans_screen.dart';
 import 'public_promotions_screen.dart';
 import 'public_gallery_screen.dart';
-import 'public_trainers_screen.dart';
+// import 'public_trainers_screen.dart'; // Removed
 import 'public_contact_screen.dart';
 
 class PublicWebsiteShell extends StatefulWidget {
@@ -31,7 +31,7 @@ class _PublicWebsiteShellState extends State<PublicWebsiteShell> {
     'Membership Plans',
     'Promotions & Offers',
     'Gym Gallery',
-    'Certified Trainers',
+    // 'Certified Trainers', // Removed
     'Contact Us',
   ];
 
@@ -59,7 +59,7 @@ class _PublicWebsiteShellState extends State<PublicWebsiteShell> {
       const PublicPlansScreen(),
       const PublicPromotionsScreen(),
       const PublicGalleryScreen(),
-      const PublicTrainersScreen(),
+      // const PublicTrainersScreen(), // Removed
       const PublicContactScreen(),
     ];
 
@@ -102,8 +102,8 @@ class _PublicWebsiteShellState extends State<PublicWebsiteShell> {
             _topNavBtn('Plans', 2),
             _topNavBtn('Offers', 3),
             _topNavBtn('Gallery', 4),
-            _topNavBtn('Trainers', 5),
-            _topNavBtn('Contact', 6),
+            // _topNavBtn('Trainers', 5), // Removed
+            _topNavBtn('Contact', 5), // Index shifted from 6 to 5
             const SizedBox(width: 8),
           ],
 
@@ -190,11 +190,11 @@ class _PublicWebsiteShellState extends State<PublicWebsiteShell> {
                       selectedIcon: Icon(Icons.photo_library),
                       label: Text('Gallery'),
                     ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.sports_outlined),
-                      selectedIcon: Icon(Icons.sports),
-                      label: Text('Trainers'),
-                    ),
+                    // NavigationRailDestination(
+                    //   icon: Icon(Icons.sports_outlined),
+                    //   selectedIcon: Icon(Icons.sports),
+                    //   label: Text('Trainers'),
+                    // ), // Removed
                     NavigationRailDestination(
                       icon: Icon(Icons.contact_mail_outlined),
                       selectedIcon: Icon(Icons.contact_mail),
@@ -319,8 +319,8 @@ class _PublicWebsiteShellState extends State<PublicWebsiteShell> {
                   3,
                 ),
                 _drawerTile(Icons.photo_library_rounded, 'Gallery', 4),
-                _drawerTile(Icons.sports_rounded, 'Trainers', 5),
-                _drawerTile(Icons.contact_mail_rounded, 'Contact Us', 6),
+                // _drawerTile(Icons.sports_rounded, 'Trainers', 5), // Removed
+                _drawerTile(Icons.contact_mail_rounded, 'Contact Us', 5), // Index shifted from 6 to 5
                 const Divider(height: 24),
                 ListTile(
                   leading: const Icon(
