@@ -27,19 +27,23 @@ class ExerciseModel {
     this.updatedAt,
   });
 
-  bool get isActive => status.toUpperCase() == 'ACTIVE';
+  bool get isActive =>
+      status.trim().toUpperCase() == 'ACTIVE' || status.trim().isEmpty;
 
   factory ExerciseModel.fromMap(Map<String, dynamic> map, String docId) {
     return ExerciseModel(
       id: docId,
-      name: map['name'] ?? '',
-      muscleGroup: map['muscle_group'] ?? '',
-      equipment: map['equipment'] ?? '',
-      instructions: map['instructions'] ?? '',
-      imageUrl: map['image_url'] ?? '',
-      videoUrl: map['video_url'] ?? '',
-      difficulty: (map['difficulty'] ?? 'BEGINNER').toString().toUpperCase(),
-      status: (map['status'] ?? 'ACTIVE').toString().toUpperCase(),
+      name: map['name']?.toString() ?? '',
+      muscleGroup: map['muscle_group']?.toString() ?? '',
+      equipment: map['equipment']?.toString() ?? '',
+      instructions: map['instructions']?.toString() ?? '',
+      imageUrl: map['image_url']?.toString() ?? '',
+      videoUrl: map['video_url']?.toString() ?? '',
+      difficulty: (map['difficulty'] ?? 'BEGINNER')
+          .toString()
+          .trim()
+          .toUpperCase(),
+      status: (map['status'] ?? 'ACTIVE').toString().trim().toUpperCase(),
       createdAt: AppDateUtils.parseDateTime(map['created_at']),
       updatedAt: AppDateUtils.parseDateTime(map['updated_at']),
     );

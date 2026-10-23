@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/date_utils.dart';
 import '../../../providers/member_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../shared/widgets/stat_card.dart';
@@ -367,6 +368,21 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                             const SizedBox(height: 20),
                           ],
 
+                          // Today's Diet Plan (Issue 6)
+                          _buildSectionLabel(
+                            "Today's Diet Plan (${AppDateUtils.currentDayName()})",
+                            theme,
+                          ),
+                          const SizedBox(height: 10),
+                          if (member.todayDietPlans.isNotEmpty) ...[
+                            ...member.todayDietPlans.map(
+                              (d) => _buildDietTile(d, theme),
+                            ),
+                          ] else ...[
+                            _buildDietEmptyCard(member, theme),
+                          ],
+                          const SizedBox(height: 20),
+
                           // Feature grid
                           _buildSectionLabel('Member Features', theme),
                           const SizedBox(height: 12),
@@ -469,6 +485,142 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
             }
           },
           child: const Text('Done'),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDietTile(dynamic d, ThemeData theme) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    d.mealType,
+                    style: const TextStyle(
+                      color: AppColors.success,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+                Text(
+                  '${d.calories} kcal',
+                  style: const TextStyle(
+                    color: AppColors.success,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              d.foodName,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.bolt, size: 14, color: AppColors.accent),
+                const SizedBox(width: 4),
+                Text(
+                  'Protein: ${d.protein.toStringAsFixed(0)}g',
+                  style: const TextStyle(fontSize: 12, color: AppColors.accent),
+                ),
+                if (d.notes.isNotEmpty) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '• ${d.notes}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDietEmptyCard(MemberProvider member, ThemeData theme) {
+    final hasAnyDietPlans = member.dietPlans.isNotEmpty;
+    final todayName = AppDateUtils.currentDayName();
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.restaurant_rounded,
+                color: AppColors.success,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hasAnyDietPlans
+                        ? 'No Meals Scheduled for $todayName'
+                        : 'No Diet Plan Assigned Yet',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    hasAnyDietPlans
+                        ? 'Follow your general nutritional guidelines today.'
+                        : 'Your coach will configure your weekly diet blueprint.',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (hasAnyDietPlans)
+              TextButton(
+                onPressed: () => _navigate(const MemberDietPlansScreen()),
+                child: const Text('View Week'),
+              ),
+          ],
         ),
       ),
     );

@@ -8,7 +8,7 @@ class FeeModel {
   final String fitnessGoal;
   final double feeAmount;
   final String feeDate; // YYYY-MM-DD
-  final String feeMonth; // e.g. SEPTEMBER
+  final String feeMonth; // e.g. OCTOBER
   final int feeYear; // e.g. 2026
   final String paymentStatus; // PAID, UNPAID, PENDING
   final DateTime? createdAt;
@@ -29,20 +29,28 @@ class FeeModel {
     this.updatedAt,
   });
 
-  bool get isPaid => paymentStatus.toUpperCase() == 'PAID';
+  bool get isPaid => paymentStatus.trim().toUpperCase() == 'PAID';
 
   factory FeeModel.fromMap(Map<String, dynamic> map, String docId) {
     return FeeModel(
       id: docId,
-      memberId: map['member_id'] ?? '',
-      memberName: map['member_name'] ?? '',
-      memberEmail: map['member_email'] ?? '',
-      fitnessGoal: map['fitness_goal'] ?? '',
-      feeAmount: (map['fee_amount'] as num?)?.toDouble() ?? 0.0,
-      feeDate: map['fee_date'] ?? '',
-      feeMonth: (map['fee_month'] ?? '').toString().toUpperCase(),
-      feeYear: (map['fee_year'] as num?)?.toInt() ?? DateTime.now().year,
-      paymentStatus: (map['payment_status'] ?? 'PAID').toString().toUpperCase(),
+      memberId: map['member_id']?.toString() ?? '',
+      memberName: map['member_name']?.toString() ?? '',
+      memberEmail: map['member_email']?.toString() ?? '',
+      fitnessGoal: map['fitness_goal']?.toString() ?? '',
+      feeAmount: (map['fee_amount'] is num)
+          ? (map['fee_amount'] as num).toDouble()
+          : double.tryParse(map['fee_amount']?.toString() ?? '0') ?? 0.0,
+      feeDate: map['fee_date']?.toString() ?? '',
+      feeMonth: (map['fee_month'] ?? '').toString().trim().toUpperCase(),
+      feeYear: (map['fee_year'] is num)
+          ? (map['fee_year'] as num).toInt()
+          : int.tryParse(map['fee_year']?.toString() ?? '') ??
+                DateTime.now().year,
+      paymentStatus: (map['payment_status'] ?? 'PAID')
+          .toString()
+          .trim()
+          .toUpperCase(),
       createdAt: AppDateUtils.parseDateTime(map['created_at']),
       updatedAt: AppDateUtils.parseDateTime(map['updated_at']),
     );

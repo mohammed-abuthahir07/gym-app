@@ -17,7 +17,6 @@ import 'promotion_management_screen.dart';
 import 'challenge_management_screen.dart';
 import 'exercise_management_screen.dart';
 import 'notification_management_screen.dart';
-import 'content_management_screen.dart';
 import 'fee_management_screen.dart';
 import 'contact_inquiries_screen.dart';
 import 'analytics_reports_screen.dart';
@@ -331,7 +330,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       const ChallengeManagementScreen(),
       const ExerciseManagementScreen(),
       const NotificationManagementScreen(),
-      const ContentManagementScreen(),
       const ContactInquiriesScreen(),
       const AnalyticsReportsScreen(),
     ];
@@ -351,7 +349,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         Icons.notifications_active_outlined,
         Icons.notifications_active,
       ),
-      ('Content', Icons.article_outlined, Icons.article),
       ('Enquiries', Icons.mail_outline, Icons.mail),
       ('Analytics', Icons.bar_chart_outlined, Icons.bar_chart),
     ];
@@ -487,13 +484,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         const NotificationManagementScreen(),
       ),
       (
-        Icons.article_rounded,
-        'Content & Articles',
-        '${admin.contents.length} published',
-        Colors.indigo,
-        const ContentManagementScreen(),
-      ),
-      (
         Icons.mail_rounded,
         'Contact Enquiries',
         '${admin.contacts.where((c) => !c.isRead).length} new',
@@ -626,15 +616,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   () => _navigateFromDrawer(
                     context,
                     const NotificationManagementScreen(),
-                  ),
-                ),
-                _drawerItem(
-                  context,
-                  Icons.article_rounded,
-                  'Content & Articles',
-                  () => _navigateFromDrawer(
-                    context,
-                    const ContentManagementScreen(),
                   ),
                 ),
                 _drawerItem(

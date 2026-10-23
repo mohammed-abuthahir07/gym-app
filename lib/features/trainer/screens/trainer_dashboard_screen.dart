@@ -16,6 +16,7 @@ import 'trainer_diet_plans_screen.dart';
 import 'trainer_schedules_screen.dart';
 import 'trainer_cheat_days_screen.dart';
 import 'trainer_members_chat_screen.dart';
+import 'trainer_notifications_screen.dart';
 
 class TrainerDashboardScreen extends StatefulWidget {
   const TrainerDashboardScreen({super.key});
@@ -88,6 +89,36 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
               context,
               MaterialPageRoute(builder: (_) => const ThemeSettingsScreen()),
             ),
+          ),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined, size: 22),
+                tooltip: 'Notifications',
+                onPressed: () => _navigate(const TrainerNotificationsScreen()),
+              ),
+              if (trainer.notificationCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '${trainer.notificationCount}',
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, size: 22),
@@ -432,6 +463,15 @@ class _TrainerDashboardScreenState extends State<TrainerDashboardScreen> {
                   'Chat with Members',
                   () =>
                       _navFromDrawer(context, const TrainerMembersChatScreen()),
+                ),
+                _drawerItem(
+                  context,
+                  Icons.notifications_rounded,
+                  'Notifications',
+                  () => _navFromDrawer(
+                    context,
+                    const TrainerNotificationsScreen(),
+                  ),
                 ),
                 const Divider(),
                 _drawerItem(

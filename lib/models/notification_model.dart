@@ -23,16 +23,21 @@ class NotificationModel {
 
   factory NotificationModel.fromMap(Map<String, dynamic> map, String docId) {
     final rawIsRead = map['is_read'];
-    final readBool = rawIsRead == true || rawIsRead == 1;
+    final readBool =
+        rawIsRead == true ||
+        rawIsRead == 1 ||
+        rawIsRead == '1' ||
+        rawIsRead == 'true';
 
     return NotificationModel(
       id: docId,
-      recipientId: map['recipient_id'],
+      recipientId: map['recipient_id']?.toString(),
       recipientRole: (map['recipient_role'] ?? 'MEMBER')
           .toString()
+          .trim()
           .toUpperCase(),
-      title: map['title'] ?? '',
-      message: map['message'] ?? '',
+      title: map['title']?.toString() ?? '',
+      message: map['message']?.toString() ?? '',
       isRead: readBool,
       createdAt: AppDateUtils.parseDateTime(map['created_at']),
       updatedAt: AppDateUtils.parseDateTime(map['updated_at']),

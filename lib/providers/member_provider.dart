@@ -54,47 +54,91 @@ class MemberProvider extends ChangeNotifier {
 
     try {
       // 1. Record daily check-in
-      await _service.recordCheckIn(memberId);
-      checkInDays = await _service.getMemberCheckInDays(memberId);
+      try {
+        await _service.recordCheckIn(memberId);
+        checkInDays = await _service.getMemberCheckInDays(memberId);
+      } catch (e) {
+        debugPrint('Error recording check-in: $e');
+      }
 
       // 2. Profile
-      profile = await _service.getMemberProfile(memberId);
+      try {
+        profile = await _service.getMemberProfile(memberId);
+      } catch (e) {
+        debugPrint('Error loading member profile: $e');
+      }
 
       // 3. Progress
-      progressList = await _service.getProgressList(memberId);
-      _calculateProgressAnalytics();
+      try {
+        progressList = await _service.getProgressList(memberId);
+        _calculateProgressAnalytics();
+      } catch (e) {
+        debugPrint('Error loading member progress: $e');
+      }
 
       // 4. Workout Plans
-      workoutPlans = await _service.getMemberWorkoutPlans(memberId);
-      workoutPlansCount = workoutPlans.length;
-      _calculateDailyWorkouts();
+      try {
+        workoutPlans = await _service.getMemberWorkoutPlans(memberId);
+        workoutPlansCount = workoutPlans.length;
+        _calculateDailyWorkouts();
+      } catch (e) {
+        debugPrint('Error loading member workout plans: $e');
+      }
 
       // 5. Diet Plans
-      dietPlans = await _service.getMemberDietPlans(memberId);
-      final currentDay = AppDateUtils.currentDayName();
-      todayDietPlans = await _service.getMemberTodayDietPlans(
-        memberId,
-        currentDay,
-      );
+      try {
+        dietPlans = await _service.getMemberDietPlans(memberId);
+        final currentDay = AppDateUtils.currentDayName();
+        todayDietPlans = await _service.getMemberTodayDietPlans(
+          memberId,
+          currentDay,
+        );
+      } catch (e) {
+        debugPrint('Error loading member diet plans: $e');
+      }
 
       // 6. Cheat Days
-      cheatDays = await _service.getMemberCheatDays(memberId);
-      _calculateCheatCount();
+      try {
+        cheatDays = await _service.getMemberCheatDays(memberId);
+        _calculateCheatCount();
+      } catch (e) {
+        debugPrint('Error loading member cheat days: $e');
+      }
 
       // 7. Class Schedules (from trainer)
-      schedules = await _service.getMemberClassSchedules(trainerId);
+      try {
+        schedules = await _service.getMemberClassSchedules(trainerId);
+      } catch (e) {
+        debugPrint('Error loading member class schedules: $e');
+      }
 
       // 8. Notifications
-      notifications = await _service.getMemberNotifications(memberId);
-      notificationCount = notifications.where((n) => !n.isRead).length;
+      try {
+        notifications = await _service.getMemberNotifications(memberId);
+        notificationCount = notifications.where((n) => !n.isRead).length;
+      } catch (e) {
+        debugPrint('Error loading member notifications: $e');
+      }
 
       // 9. Fees
-      fees = await _service.getMemberFees(memberId);
-      _calculatePaymentStatus();
+      try {
+        fees = await _service.getMemberFees(memberId);
+        _calculatePaymentStatus();
+      } catch (e) {
+        debugPrint('Error loading member fees: $e');
+      }
 
       // 10. Exercises & Challenges
-      exercises = await _service.getActiveExercises();
-      challenges = await _service.getActiveChallenges();
+      try {
+        exercises = await _service.getActiveExercises();
+      } catch (e) {
+        debugPrint('Error loading active exercises: $e');
+      }
+      try {
+        challenges = await _service.getActiveChallenges();
+      } catch (e) {
+        debugPrint('Error loading active challenges: $e');
+      }
     } catch (e) {
       _errorMessage = 'Unable to load fitness metrics. Please check your connection and retry.';
     } finally {
@@ -156,13 +200,21 @@ class MemberProvider extends ChangeNotifier {
   }
 
   void _calculatePaymentStatus() {
-    final currentMonth = AppDateUtils.currentMonthName();
+    final currentMonth = AppDateUtils.currentMonthName().trim().toUpperCase();
     final currentYear = AppDateUtils.currentYear();
+    final now = DateTime.now();
+    final currentYearMonth =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}";
 
-    final currentFee = fees
-        .where((f) => f.feeMonth == currentMonth && f.feeYear == currentYear)
-        .toList();
-    if (currentFee.isNotEmpty && currentFee.first.isPaid) {
+    final currentFee = fees.where((f) {
+      final monthMatches =
+          f.feeMonth.trim().toUpperCase() == currentMonth &&
+          f.feeYear == currentYear;
+      final dateMatches = f.feeDate.trim().startsWith(currentYearMonth);
+      return monthMatches || dateMatches;
+    }).toList();
+
+    if (currentFee.isNotEmpty && currentFee.any((f) => f.isPaid)) {
       currentMonthPaymentStatus = 'PAID';
     } else {
       currentMonthPaymentStatus = 'UNPAID';

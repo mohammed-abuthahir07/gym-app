@@ -7,6 +7,9 @@ import 'package:gymmanagement/models/diet_plan_model.dart';
 import 'package:gymmanagement/models/progress_model.dart';
 import 'package:gymmanagement/models/cheat_day_model.dart';
 import 'package:gymmanagement/models/message_model.dart';
+import 'package:gymmanagement/models/notification_model.dart';
+import 'package:gymmanagement/models/challenge_model.dart';
+import 'package:gymmanagement/models/exercise_model.dart';
 import 'package:gymmanagement/services/firestore_service.dart';
 
 void main() {
@@ -173,6 +176,80 @@ void main() {
 
       expect(id1, id2);
       expect(id1, 'member002_trainer001');
+    });
+
+    test('FeeModel resiliently parses string amounts, years and payment status', () {
+      final rawMap = {
+        'member_id': 'm001',
+        'member_name': 'Mohammed',
+        'member_email': 'member@gmail.com',
+        'fitness_goal': 'Build Muscle',
+        'fee_amount': '1500.50',
+        'fee_date': '2026-10-15',
+        'fee_month': 'october',
+        'fee_year': '2026',
+        'payment_status': ' paid ',
+      };
+
+      final fee = FeeModel.fromMap(rawMap, 'fee_oct_2026');
+      expect(fee.feeAmount, 1500.50);
+      expect(fee.feeYear, 2026);
+      expect(fee.feeMonth, 'OCTOBER');
+      expect(fee.isPaid, isTrue);
+    });
+
+    test('NotificationModel parses broadcasts and boolean read state safely', () {
+      final broadcastTrainerMap = {
+        'recipient_id': null,
+        'recipient_role': 'all_trainers',
+        'title': 'Staff Meeting',
+        'message': 'Meeting at 6 PM',
+        'is_read': 1,
+      };
+
+      final notif = NotificationModel.fromMap(broadcastTrainerMap, 'notif_1');
+      expect(notif.recipientRole, 'ALL_TRAINERS');
+      expect(notif.isRead, isTrue);
+      expect(notif.title, 'Staff Meeting');
+
+      final broadcastMemberMap = {
+        'recipient_role': 'ALL_MEMBERS',
+        'title': 'Gym Holiday Notice',
+        'message': 'Gym open from 8 AM',
+        'is_read': '0',
+      };
+      final notif2 = NotificationModel.fromMap(broadcastMemberMap, 'notif_2');
+      expect(notif2.recipientRole, 'ALL_MEMBERS');
+      expect(notif2.isRead, isFalse);
+    });
+
+    test('ChallengeModel and ExerciseModel handle active status and difficulty properly', () {
+      final challenge = ChallengeModel.fromMap({
+        'title': '30 Day Abs',
+        'description': 'Core strength challenge',
+        'start_date': '2026-10-01',
+        'end_date': '2026-10-31',
+        'reward': 'Free protein shake',
+        'status': 'ACTIVE',
+      }, 'ch_1');
+
+      expect(challenge.isActive, isTrue);
+      expect(challenge.reward, 'Free protein shake');
+
+      final exercise = ExerciseModel.fromMap({
+        'name': 'Barbell Squat',
+        'muscle_group': 'Legs',
+        'equipment': 'Barbell',
+        'instructions': 'Squat deep with neutral spine',
+        'image_url': 'https://example.com/squat.jpg',
+        'video_url': '',
+        'difficulty': 'intermediate',
+        'status': 'active',
+      }, 'ex_1');
+
+      expect(exercise.isActive, isTrue);
+      expect(exercise.difficulty, 'INTERMEDIATE');
+      expect(exercise.name, 'Barbell Squat');
     });
   });
 }

@@ -30,21 +30,29 @@ class FirestoreService {
   }
 
   Future<List<PlanModel>> getPublicPlans() async {
-    final snap = await _db
-        .collection('plans')
-        .where('status', isEqualTo: 'ACTIVE')
-        .get();
-    return snap.docs.map((d) => PlanModel.fromMap(d.data(), d.id)).toList();
+    try {
+      final snap = await _db.collection('plans').get();
+      return snap.docs
+          .map((d) => PlanModel.fromMap(d.data(), d.id))
+          .where((p) => p.status.toUpperCase() == 'ACTIVE' || p.status.isEmpty)
+          .toList();
+    } catch (e) {
+      debugPrint('Error getting public plans: $e');
+      return [];
+    }
   }
 
   Future<List<PromotionModel>> getPublicPromotions() async {
-    final snap = await _db
-        .collection('promotions')
-        .where('status', isEqualTo: 'ACTIVE')
-        .get();
-    return snap.docs
-        .map((d) => PromotionModel.fromMap(d.data(), d.id))
-        .toList();
+    try {
+      final snap = await _db.collection('promotions').get();
+      return snap.docs
+          .map((d) => PromotionModel.fromMap(d.data(), d.id))
+          .where((p) => p.status.toUpperCase() == 'ACTIVE' || p.status.isEmpty)
+          .toList();
+    } catch (e) {
+      debugPrint('Error getting public promotions: $e');
+      return [];
+    }
   }
 
   Future<List<ContentModel>> getPublicContent() async {
@@ -53,12 +61,17 @@ class FirestoreService {
   }
 
   Future<List<UserModel>> getPublicTrainers() async {
-    final snap = await _db
-        .collection('users')
-        .where('role', isEqualTo: 'TRAINER')
-        .where('status', isEqualTo: 'ACTIVE')
-        .get();
-    return snap.docs.map((d) => UserModel.fromMap(d.data(), d.id)).toList();
+    try {
+      final snap = await _db
+          .collection('users')
+          .where('role', isEqualTo: 'TRAINER')
+          .where('status', isEqualTo: 'ACTIVE')
+          .get();
+      return snap.docs.map((d) => UserModel.fromMap(d.data(), d.id)).toList();
+    } catch (e) {
+      debugPrint('Error getting public trainers: $e');
+      return [];
+    }
   }
 
   // ==========================================
@@ -266,13 +279,16 @@ class FirestoreService {
   }
 
   Future<List<ChallengeModel>> getActiveChallenges() async {
-    final snap = await _db
-        .collection('challenges')
-        .where('status', isEqualTo: 'ACTIVE')
-        .get();
-    return snap.docs
-        .map((d) => ChallengeModel.fromMap(d.data(), d.id))
-        .toList();
+    try {
+      final snap = await _db.collection('challenges').get();
+      return snap.docs
+          .map((d) => ChallengeModel.fromMap(d.data(), d.id))
+          .where((c) => c.isActive)
+          .toList();
+    } catch (e) {
+      debugPrint('Error getting challenges from Firestore: $e');
+      return [];
+    }
   }
 
   // ==========================================
@@ -281,22 +297,81 @@ class FirestoreService {
   Future<List<NotificationModel>> getMemberNotifications(
     String memberId,
   ) async {
-    final snap = await _db.collection('notifications').get();
-    final all = snap.docs
-        .map((d) => NotificationModel.fromMap(d.data(), d.id))
-        .toList();
-    // Filter for member: direct recipientId == memberId OR recipientRole == 'ALL_MEMBERS' or 'MEMBER'
-    final filtered = all.where((n) {
-      return n.recipientId == memberId ||
-          n.recipientRole == 'ALL_MEMBERS' ||
-          (n.recipientId == null && n.recipientRole == 'MEMBER');
-    }).toList();
-    filtered.sort(
+    final Map<String, NotificationModel> map = {};
+
+    // 1. Direct notifications for this specific member
+    try {
+      final directSnap = await _db
+          .collection('notifications')
+          .where('recipient_id', isEqualTo: memberId)
+          .get();
+      for (final doc in directSnap.docs) {
+        map[doc.id] = NotificationModel.fromMap(doc.data(), doc.id);
+      }
+    } catch (e) {
+      debugPrint('Error loading member direct notifications: $e');
+    }
+
+    // 2. Broadcast notifications for all members
+    try {
+      final broadcastSnap = await _db
+          .collection('notifications')
+          .where('recipient_role', isEqualTo: 'ALL_MEMBERS')
+          .get();
+      for (final doc in broadcastSnap.docs) {
+        map[doc.id] = NotificationModel.fromMap(doc.data(), doc.id);
+      }
+    } catch (e) {
+      debugPrint('Error loading member broadcast notifications: $e');
+    }
+
+    final list = map.values.toList();
+    list.sort(
       (a, b) => (b.createdAt ?? DateTime(2000)).compareTo(
         a.createdAt ?? DateTime(2000),
       ),
     );
-    return filtered;
+    return list;
+  }
+
+  Future<List<NotificationModel>> getTrainerNotifications(
+    String trainerId,
+  ) async {
+    final Map<String, NotificationModel> map = {};
+
+    // 1. Direct notifications for this specific trainer
+    try {
+      final directSnap = await _db
+          .collection('notifications')
+          .where('recipient_id', isEqualTo: trainerId)
+          .get();
+      for (final doc in directSnap.docs) {
+        map[doc.id] = NotificationModel.fromMap(doc.data(), doc.id);
+      }
+    } catch (e) {
+      debugPrint('Error loading trainer direct notifications: $e');
+    }
+
+    // 2. Broadcast notifications for all trainers
+    try {
+      final broadcastSnap = await _db
+          .collection('notifications')
+          .where('recipient_role', isEqualTo: 'ALL_TRAINERS')
+          .get();
+      for (final doc in broadcastSnap.docs) {
+        map[doc.id] = NotificationModel.fromMap(doc.data(), doc.id);
+      }
+    } catch (e) {
+      debugPrint('Error loading trainer broadcast notifications: $e');
+    }
+
+    final list = map.values.toList();
+    list.sort(
+      (a, b) => (b.createdAt ?? DateTime(2000)).compareTo(
+        a.createdAt ?? DateTime(2000),
+      ),
+    );
+    return list;
   }
 
   Future<void> markNotificationRead(String notifId) async {
@@ -416,12 +491,11 @@ class FirestoreService {
     String memberId,
     String day,
   ) async {
-    final snap = await _db
-        .collection('diet_plans')
-        .where('member_id', isEqualTo: memberId)
-        .where('diet_day', isEqualTo: day.toUpperCase())
-        .get();
-    return snap.docs.map((d) => DietPlanModel.fromMap(d.data(), d.id)).toList();
+    final all = await getMemberDietPlans(memberId);
+    final targetDay = day.trim().toUpperCase();
+    return all
+        .where((d) => d.dietDay.trim().toUpperCase() == targetDay)
+        .toList();
   }
 
   // ==========================================

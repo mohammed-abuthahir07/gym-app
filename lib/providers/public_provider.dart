@@ -28,10 +28,26 @@ class PublicProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      plans = await _service.getPublicPlans();
-      promotions = await _service.getPublicPromotions();
-      contents = await _service.getPublicContent();
-      trainers = await _service.getPublicTrainers();
+      try {
+        plans = await _service.getPublicPlans();
+      } catch (e) {
+        debugPrint('Error loading public plans: $e');
+      }
+      try {
+        promotions = await _service.getPublicPromotions();
+      } catch (e) {
+        debugPrint('Error loading public promotions: $e');
+      }
+      try {
+        contents = await _service.getPublicContent();
+      } catch (e) {
+        debugPrint('Error loading public content: $e');
+      }
+      try {
+        trainers = await _service.getPublicTrainers();
+      } catch (e) {
+        debugPrint('Error loading public trainers: $e');
+      }
     } catch (e) {
       _errorMessage =
           'Unable to load highlights. Please check your connection.';

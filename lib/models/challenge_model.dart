@@ -23,17 +23,18 @@ class ChallengeModel {
     this.updatedAt,
   });
 
-  bool get isActive => status.toUpperCase() == 'ACTIVE';
+  bool get isActive =>
+      status.trim().toUpperCase() == 'ACTIVE' || status.trim().isEmpty;
 
   factory ChallengeModel.fromMap(Map<String, dynamic> map, String docId) {
     return ChallengeModel(
       id: docId,
-      title: map['title'] ?? '',
-      description: map['description'] ?? '',
-      startDate: map['start_date'] ?? '',
-      endDate: map['end_date'] ?? '',
-      reward: map['reward'] ?? '',
-      status: (map['status'] ?? 'ACTIVE').toString().toUpperCase(),
+      title: map['title']?.toString() ?? '',
+      description: map['description']?.toString() ?? '',
+      startDate: map['start_date']?.toString() ?? '',
+      endDate: map['end_date']?.toString() ?? '',
+      reward: map['reward']?.toString() ?? '',
+      status: (map['status'] ?? 'ACTIVE').toString().trim().toUpperCase(),
       createdAt: AppDateUtils.parseDateTime(map['created_at']),
       updatedAt: AppDateUtils.parseDateTime(map['updated_at']),
     );

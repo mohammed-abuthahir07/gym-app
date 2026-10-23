@@ -7,6 +7,7 @@ import '../models/workout_plan_model.dart';
 import '../models/diet_plan_model.dart';
 import '../models/cheat_day_model.dart';
 import '../models/exercise_model.dart';
+import '../models/notification_model.dart';
 import '../core/utils/date_utils.dart';
 
 class TrainerProvider extends ChangeNotifier {
@@ -25,6 +26,8 @@ class TrainerProvider extends ChangeNotifier {
   List<CheatDayModel> cheatDays = [];
   List<ExerciseModel> availableExercises = [];
   Map<String, int> memberCheckInDays = {};
+  List<NotificationModel> notifications = [];
+  int notificationCount = 0;
 
   // Metrics
   int assignedMembersCount = 0;
@@ -115,6 +118,16 @@ class TrainerProvider extends ChangeNotifier {
         } catch (e) {
           debugPrint('Error loading check-ins for member ${member.id}: $e');
         }
+      }
+
+      // Load notifications for trainer
+      try {
+        notifications = await _service.getTrainerNotifications(trainerId);
+        notificationCount = notifications.where((n) => !n.isRead).length;
+      } catch (e) {
+        debugPrint('Error loading notifications for trainer $trainerId: $e');
+        notifications = [];
+        notificationCount = 0;
       }
     } catch (e) {
       debugPrint('TrainerProvider.loadTrainerData unexpected exception: $e');
@@ -218,6 +231,13 @@ class TrainerProvider extends ChangeNotifier {
     await _service.deleteDietPlan(dietId);
     dietPlans = await _service.getTrainerDietPlans(trainerId);
     dietPlansCount = dietPlans.length;
+    notifyListeners();
+  }
+
+  Future<void> markNotificationRead(String notifId, String trainerId) async {
+    await _service.markNotificationRead(notifId);
+    notifications = await _service.getTrainerNotifications(trainerId);
+    notificationCount = notifications.where((n) => !n.isRead).length;
     notifyListeners();
   }
 }

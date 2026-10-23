@@ -38,18 +38,25 @@ class DietPlanModel {
   factory DietPlanModel.fromMap(Map<String, dynamic> map, String docId) {
     return DietPlanModel(
       id: docId,
-      trainerId: map['trainer_id'] ?? '',
-      trainerName: map['trainer_name'],
-      trainerEmail: map['trainer_email'],
-      memberId: map['member_id'] ?? '',
-      memberName: map['member_name'],
-      memberEmail: map['member_email'],
-      dietDay: (map['diet_day'] ?? 'MONDAY').toString().toUpperCase(),
-      mealType: (map['meal_type'] ?? 'BREAKFAST').toString().toUpperCase(),
-      foodName: map['food_name'] ?? '',
-      calories: (map['calories'] as num?)?.toInt() ?? 0,
-      protein: (map['protein'] as num?)?.toDouble() ?? 0.0,
-      notes: map['notes'] ?? '',
+      trainerId: map['trainer_id']?.toString() ?? '',
+      trainerName: map['trainer_name']?.toString(),
+      trainerEmail: map['trainer_email']?.toString(),
+      memberId: map['member_id']?.toString() ?? '',
+      memberName: map['member_name']?.toString(),
+      memberEmail: map['member_email']?.toString(),
+      dietDay: (map['diet_day'] ?? 'MONDAY').toString().trim().toUpperCase(),
+      mealType: (map['meal_type'] ?? 'BREAKFAST')
+          .toString()
+          .trim()
+          .toUpperCase(),
+      foodName: map['food_name']?.toString() ?? '',
+      calories: (map['calories'] is num)
+          ? (map['calories'] as num).toInt()
+          : int.tryParse(map['calories']?.toString() ?? '0') ?? 0,
+      protein: (map['protein'] is num)
+          ? (map['protein'] as num).toDouble()
+          : double.tryParse(map['protein']?.toString() ?? '0') ?? 0.0,
+      notes: map['notes']?.toString() ?? '',
       createdAt: AppDateUtils.parseDateTime(map['created_at']),
       updatedAt: AppDateUtils.parseDateTime(map['updated_at']),
     );
