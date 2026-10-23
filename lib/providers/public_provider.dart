@@ -43,11 +43,9 @@ class PublicProvider extends ChangeNotifier {
       } catch (e) {
         debugPrint('Error loading public content: $e');
       }
-      try {
-        trainers = await _service.getPublicTrainers();
-      } catch (e) {
-        debugPrint('Error loading public trainers: $e');
-      }
+      // trainers are served from static data in PublicTrainersScreen,
+      // so we skip the Firestore query here to avoid PERMISSION_DENIED
+      // for unauthenticated (signed-out) public visitors.
     } catch (e) {
       _errorMessage =
           'Unable to load highlights. Please check your connection.';

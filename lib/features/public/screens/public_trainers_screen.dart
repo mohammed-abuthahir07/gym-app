@@ -25,7 +25,7 @@ class PublicTrainersScreen extends StatelessWidget {
   final bool isStandalone;
   const PublicTrainersScreen({super.key, this.isStandalone = false});
 
-  final List<PublicTrainerInfo> _trainers = const [
+  static const List<PublicTrainerInfo> staticTrainers = [
     PublicTrainerInfo(
       name: 'Sarah Jenkins',
       specialty: 'Head Functional & HIIT Coach',
@@ -67,6 +67,8 @@ class PublicTrainersScreen extends StatelessWidget {
       ],
     ),
   ];
+
+  final List<PublicTrainerInfo> _trainers = staticTrainers;
 
   @override
   Widget build(BuildContext context) {

@@ -18,16 +18,23 @@ class MemberNotificationsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Notifications')),
-      body: member.notifications.isEmpty
-          ? const EmptyState(
-              title: 'No Notifications',
-              message: 'Workout updates, trainer announcements, and gym news will show here.',
-              icon: Icons.notifications_none,
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: member.notifications.length,
-              itemBuilder: (ctx, idx) {
+      body: RefreshIndicator(
+        onRefresh: () async {
+          if (user != null) {
+            await member.loadMemberData(user.id, user.trainerId);
+          }
+        },
+        child: member.notifications.isEmpty
+            ? const EmptyState(
+                title: 'No Notifications',
+                message:
+                    'Workout updates, trainer announcements, and gym news will show here.',
+                icon: Icons.notifications_none,
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: member.notifications.length,
+                itemBuilder: (ctx, idx) {
                 final n = member.notifications[idx];
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -84,6 +91,7 @@ class MemberNotificationsScreen extends StatelessWidget {
                 );
               },
             ),
+      ),
     );
   }
 }

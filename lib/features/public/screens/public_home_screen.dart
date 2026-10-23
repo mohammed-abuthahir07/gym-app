@@ -6,6 +6,7 @@ import '../../../providers/public_provider.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../../shared/widgets/empty_state.dart';
 import 'contact_screen.dart';
+import 'public_trainers_screen.dart';
 
 class PublicHomeScreen extends StatefulWidget {
   const PublicHomeScreen({super.key});
@@ -204,45 +205,95 @@ class _PublicHomeScreenState extends State<PublicHomeScreen>
                         },
                       ),
 
-                // 3. Trainers
-                publicProvider.trainers.isEmpty
-                    ? const EmptyState(
-                        title: 'Trainers Directory',
-                        message: 'Certified gym trainers and coaches will be listed here.',
-                        icon: Icons.people_outline,
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: publicProvider.trainers.length,
-                        itemBuilder: (ctx, idx) {
-                          final t = publicProvider.trainers[idx];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: AppColors.accent,
-                                child: Text(
-                                  t.name.isNotEmpty
-                                      ? t.name[0].toUpperCase()
-                                      : 'T',
-                                ),
-                              ),
-                              title: Text(
-                                t.name,
+                // 3. Trainers — uses static data (no auth required)
+                ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: PublicTrainersScreen.staticTrainers.length,
+                  itemBuilder: (ctx, idx) {
+                    final t = PublicTrainersScreen.staticTrainers[idx];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: const BorderSide(color: AppColors.cardBorder),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CircleAvatar(
+                              radius: 26,
+                              backgroundColor: AppColors.accent,
+                              child: Text(
+                                t.name.isNotEmpty
+                                    ? t.name[0].toUpperCase()
+                                    : 'T',
                                 style: const TextStyle(
+                                  color: Colors.white,
                                   fontWeight: FontWeight.bold,
+                                  fontSize: 20,
                                 ),
-                              ),
-                              subtitle: Text(t.email),
-                              trailing: const Icon(
-                                Icons.verified,
-                                color: AppColors.info,
-                                size: 20,
                               ),
                             ),
-                          );
-                        },
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    t.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    t.specialty,
+                                    style: const TextStyle(
+                                      color: AppColors.accent,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    t.bio,
+                                    style: const TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 12,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.star_rounded,
+                                        color: AppColors.warning,
+                                        size: 14,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        t.experience,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                    );
+                  },
+                ),
 
                 // 4. Content / Tips
                 publicProvider.contents.isEmpty

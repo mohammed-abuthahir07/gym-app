@@ -75,8 +75,8 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isAuthenticated() || (
         resource != null && 
-        resource.data.role == 'TRAINER' && 
-        resource.data.status == 'ACTIVE'
+        (resource.data.role == 'TRAINER' || resource.data.role == 'trainer') && 
+        (resource.data.status == 'ACTIVE' || resource.data.status == 'active')
       );
       // Allow user creation during self-registration with default MEMBER role only, or admin can create any role
       allow create: if isAuthenticated() && (
@@ -324,16 +324,20 @@ service cloud.firestore {
         isAdmin() || 
         (resource != null && (
           resource.data.recipient_id == request.auth.uid ||
-          ((resource.data.recipient_role == 'ALL_MEMBERS' || resource.data.recipient_role == 'MEMBER') && isMember()) ||
-          ((resource.data.recipient_role == 'ALL_TRAINERS' || resource.data.recipient_role == 'TRAINER') && isTrainer())
+          resource.data.recipient_role == 'ALL' ||
+          resource.data.recipient_role == 'all' ||
+          ((resource.data.recipient_role == 'ALL_MEMBERS' || resource.data.recipient_role == 'all_members' || resource.data.recipient_role == 'MEMBER' || resource.data.recipient_role == 'member') && isMember()) ||
+          ((resource.data.recipient_role == 'ALL_TRAINERS' || resource.data.recipient_role == 'all_trainers' || resource.data.recipient_role == 'TRAINER' || resource.data.recipient_role == 'trainer') && isTrainer())
         ))
       );
       allow create: if isAdmin() || isTrainer();
       allow update: if isAuthenticated() && resource != null && (
         isAdmin() ||
         resource.data.recipient_id == request.auth.uid ||
-        ((resource.data.recipient_role == 'ALL_MEMBERS' || resource.data.recipient_role == 'MEMBER') && isMember()) ||
-        ((resource.data.recipient_role == 'ALL_TRAINERS' || resource.data.recipient_role == 'TRAINER') && isTrainer())
+        resource.data.recipient_role == 'ALL' ||
+        resource.data.recipient_role == 'all' ||
+        ((resource.data.recipient_role == 'ALL_MEMBERS' || resource.data.recipient_role == 'all_members' || resource.data.recipient_role == 'MEMBER' || resource.data.recipient_role == 'member') && isMember()) ||
+        ((resource.data.recipient_role == 'ALL_TRAINERS' || resource.data.recipient_role == 'all_trainers' || resource.data.recipient_role == 'TRAINER' || resource.data.recipient_role == 'trainer') && isTrainer())
       );
       allow delete: if isAdmin();
     }

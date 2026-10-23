@@ -116,45 +116,58 @@ class MemberChallengesScreen extends StatelessWidget {
                                 const SizedBox(height: 14),
                                 const Divider(height: 1),
                                 const SizedBox(height: 12),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.card_giftcard_rounded,
-                                          size: 16,
-                                          color: AppColors.primary,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          'Reward: ${ch.reward}',
-                                          style: const TextStyle(
-                                            color: AppColors.primary,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12.5,
+                                    if (ch.reward.isNotEmpty) ...[
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Padding(
+                                            padding: EdgeInsets.only(top: 2),
+                                            child: Icon(
+                                              Icons.card_giftcard_rounded,
+                                              size: 16,
+                                              color: AppColors.primary,
+                                            ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.calendar_today_rounded,
-                                          size: 14,
-                                          color: AppColors.textMuted,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${ch.startDate} → ${ch.endDate}',
-                                          style: const TextStyle(
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              'Reward: ${ch.reward}',
+                                              style: const TextStyle(
+                                                color: AppColors.primary,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12.5,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                    ],
+                                    if (ch.startDate.isNotEmpty ||
+                                        ch.endDate.isNotEmpty)
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.calendar_today_rounded,
+                                            size: 14,
                                             color: AppColors.textMuted,
-                                            fontSize: 11,
                                           ),
-                                        ),
-                                      ],
-                                    ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              '${ch.startDate} → ${ch.endDate}',
+                                              style: const TextStyle(
+                                                color: AppColors.textMuted,
+                                                fontSize: 11.5,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                   ],
                                 ),
                               ],
