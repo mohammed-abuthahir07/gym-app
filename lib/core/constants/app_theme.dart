@@ -33,17 +33,17 @@ class CustomThemeData {
 
   static const CustomThemeData lightDefault = CustomThemeData(
     themeMode: ThemeMode.light,
-    primary: Color(0xFFD32F2F),
-    secondary: Color(0xFFEEEEEE),
+    primary: Color(0xFFE50914),
+    secondary: Color(0xFFF1F5F9),
     accent: Color(0xFFFF5722),
     background: Color(0xFFF8F9FA),
     surface: Color(0xFFFFFFFF),
-    textPrimary: Color(0xFF212121),
-    textSecondary: Color(0xFF666666),
-    buttonColor: Color(0xFFD32F2F),
+    textPrimary: Color(0xFF1E293B),
+    textSecondary: Color(0xFF64748B),
+    buttonColor: Color(0xFFE50914),
     buttonTextColor: Colors.white,
     navBarColor: Color(0xFFFFFFFF),
-    cardBorder: Color(0xFFE0E0E0),
+    cardBorder: Color(0xFFE2E8F0),
   );
 
   CustomThemeData copyWith({

@@ -44,6 +44,10 @@ class AppDateUtils {
     return DateFormat('EEEE').format(DateTime.now()).toUpperCase();
   }
 
+  static String dayNameFromDate(DateTime date) {
+    return DateFormat('EEEE').format(date).toUpperCase();
+  }
+
   static String currentMonthName() {
     return DateFormat('MMMM').format(DateTime.now()).toUpperCase();
   }

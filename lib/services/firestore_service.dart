@@ -449,31 +449,110 @@ class FirestoreService {
     return WorkoutPlanModel.fromMap(doc.data()!, doc.id, exercises: exercises);
   }
 
-  Future<void> completeWorkoutExercise({
+  Future<bool> completeWorkoutExercise({
     required String memberId,
     required String workoutPlanExerciseId,
     required String completedDate,
   }) async {
-    // Check if already completed today
-    final snap = await _db
+    final completionDocId =
+        '${memberId}_${workoutPlanExerciseId}_$completedDate';
+    final completionRef = _db
         .collection('workout_completions')
-        .where('member_id', isEqualTo: memberId)
-        .where('workout_plan_exercise_id', isEqualTo: workoutPlanExerciseId)
-        .where('completed_date', isEqualTo: completedDate)
-        .get();
-
-    if (snap.docs.isNotEmpty) {
-      throw Exception('Workout already marked as completed for today');
-    }
+        .doc(completionDocId);
 
     final model = WorkoutCompletionModel(
-      id: '',
+      id: completionDocId,
       memberId: memberId,
       workoutPlanExerciseId: workoutPlanExerciseId,
       completedDate: completedDate,
       completedAt: DateTime.now(),
     );
-    await _db.collection('workout_completions').add(model.toMap());
+    await completionRef.set(model.toMap(), SetOptions(merge: true));
+
+    // Evaluate if all required exercises for this calendar date are completed
+    await evaluateAndRecordDailyWorkoutCompletion(memberId, completedDate);
+    return true;
+  }
+
+  Future<Set<String>> getMemberCompletedExerciseIdsForDate(
+    String memberId,
+    String date,
+  ) async {
+    try {
+      final snap = await _db
+          .collection('workout_completions')
+          .where('member_id', isEqualTo: memberId)
+          .where('completed_date', isEqualTo: date)
+          .get();
+      return snap.docs
+          .map((d) => (d.data()['workout_plan_exercise_id'] ?? '').toString())
+          .where((id) => id.isNotEmpty)
+          .toSet();
+    } catch (e) {
+      debugPrint('Error getting completed exercise IDs: $e');
+      return {};
+    }
+  }
+
+  Future<bool> evaluateAndRecordDailyWorkoutCompletion(
+    String memberId,
+    String calendarDate,
+  ) async {
+    try {
+      final date = DateTime.tryParse(calendarDate) ?? DateTime.now();
+      final dayOfWeek = AppDateUtils.dayNameFromDate(date).toUpperCase();
+
+      // Retrieve all assigned workout plans for the member
+      final plans = await getMemberWorkoutPlans(memberId);
+      final allAssignedForDay = <WorkoutExerciseModel>[];
+      for (final p in plans) {
+        for (final ex in p.exercises) {
+          if (ex.workoutDay.trim().toUpperCase() == dayOfWeek) {
+            allAssignedForDay.add(ex);
+          }
+        }
+      }
+
+      // Requirement 6: A day without assigned exercises must not count automatically.
+      if (allAssignedForDay.isEmpty) {
+        return false;
+      }
+
+      // Retrieve all completed workout exercises for this member on this date
+      final compSnap = await _db
+          .collection('workout_completions')
+          .where('member_id', isEqualTo: memberId)
+          .where('completed_date', isEqualTo: calendarDate)
+          .get();
+
+      final completedIds = compSnap.docs
+          .map((d) => (d.data()['workout_plan_exercise_id'] ?? '').toString())
+          .where((id) => id.isNotEmpty)
+          .toSet();
+
+      // Check if EVERY assigned exercise for today is completed
+      final allDone =
+          allAssignedForDay.every((ex) => completedIds.contains(ex.id));
+
+      if (allDone) {
+        // Idempotent doc ID: exactly 1 entry per member per calendar date
+        final checkinDocId = '${memberId}_$calendarDate';
+        await _db.collection('checkins').doc(checkinDocId).set({
+          'member_id': memberId,
+          'checkin_date': calendarDate,
+          'checkin_type': 'WORKOUT_COMPLETION',
+          'completed_all_workouts': true,
+          'assigned_count': allAssignedForDay.length,
+          'completed_count': completedIds.length,
+          'created_at': DateTime.now().toIso8601String(),
+        }, SetOptions(merge: true));
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error evaluating daily workout completion: $e');
+      return false;
+    }
   }
 
   // ==========================================
@@ -743,11 +822,20 @@ class FirestoreService {
   }
 
   Future<int> getMemberCheckInDays(String memberId) async {
-    final snap = await _db
-        .collection('checkins')
-        .where('member_id', isEqualTo: memberId)
-        .get();
-    return snap.docs.length;
+    try {
+      final snap = await _db
+          .collection('checkins')
+          .where('member_id', isEqualTo: memberId)
+          .get();
+      final uniqueDates = snap.docs
+          .map((d) => (d.data()['checkin_date'] ?? '').toString())
+          .where((d) => d.isNotEmpty)
+          .toSet();
+      return uniqueDates.length;
+    } catch (e) {
+      debugPrint('Error getting member check in days: $e');
+      return 0;
+    }
   }
 
   // ==========================================
@@ -988,6 +1076,53 @@ class FirestoreService {
   Future<List<PlanModel>> getAllPlans() async {
     final snap = await _db.collection('plans').get();
     return snap.docs.map((d) => PlanModel.fromMap(d.data(), d.id)).toList();
+  }
+
+  Future<void> updatePlan(PlanModel model) async {
+    await _db.collection('plans').doc(model.id).update(model.toMap());
+  }
+
+  Future<bool> isPlanInUse(String planId) async {
+    try {
+      final feeSnap = await _db
+          .collection('fees')
+          .where('plan_id', isEqualTo: planId)
+          .limit(1)
+          .get();
+      if (feeSnap.docs.isNotEmpty) return true;
+
+      final userSnap = await _db
+          .collection('users')
+          .where('plan_id', isEqualTo: planId)
+          .limit(1)
+          .get();
+      if (userSnap.docs.isNotEmpty) return true;
+
+      return false;
+    } catch (e) {
+      debugPrint('Error checking if plan in use: $e');
+      return false;
+    }
+  }
+
+  Future<void> deletePlan(String planId, {bool archiveOnly = false}) async {
+    if (archiveOnly) {
+      await _db.collection('plans').doc(planId).update({
+        'status': 'INACTIVE',
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    } else {
+      final inUse = await isPlanInUse(planId);
+      if (inUse) {
+        // Safe archive: deactivate to preserve historical member subscriptions
+        await _db.collection('plans').doc(planId).update({
+          'status': 'INACTIVE',
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      } else {
+        await _db.collection('plans').doc(planId).delete();
+      }
+    }
   }
 
   // Promotion Management

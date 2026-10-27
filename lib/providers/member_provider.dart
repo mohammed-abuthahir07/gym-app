@@ -44,6 +44,7 @@ class MemberProvider extends ChangeNotifier {
   ProgressModel? currentMonthProgress;
   List<WorkoutExerciseModel> todayWorkouts = [];
   List<WorkoutExerciseModel> tomorrowWorkouts = [];
+  Set<String> todayCompletedExerciseIds = {};
   String currentMonthPaymentStatus = 'UNPAID';
 
   Future<void> loadMemberData(String memberId, String? trainerId) async {
@@ -53,12 +54,14 @@ class MemberProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Record daily check-in
+      // 1. Gym Check-In Days & Today's Completed Exercises
       try {
-        await _service.recordCheckIn(memberId);
+        final today = AppDateUtils.todayDateString();
+        todayCompletedExerciseIds = await _service
+            .getMemberCompletedExerciseIdsForDate(memberId, today);
         checkInDays = await _service.getMemberCheckInDays(memberId);
       } catch (e) {
-        debugPrint('Error recording check-in: $e');
+        debugPrint('Error loading check-in and completed workouts: $e');
       }
 
       // 2. Profile
@@ -261,6 +264,12 @@ class MemberProvider extends ChangeNotifier {
       workoutPlanExerciseId: workoutPlanExerciseId,
       completedDate: today,
     );
+    todayCompletedExerciseIds.add(workoutPlanExerciseId);
+    try {
+      checkInDays = await _service.getMemberCheckInDays(memberId);
+    } catch (e) {
+      debugPrint('Error updating check-in days after workout completion: $e');
+    }
     notifyListeners();
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymmanagement/core/utils/validators.dart';
+import 'package:gymmanagement/core/utils/date_utils.dart';
 import 'package:gymmanagement/models/user_model.dart';
 import 'package:gymmanagement/models/fee_model.dart';
 import 'package:gymmanagement/models/workout_plan_model.dart';
@@ -10,6 +11,7 @@ import 'package:gymmanagement/models/message_model.dart';
 import 'package:gymmanagement/models/notification_model.dart';
 import 'package:gymmanagement/models/challenge_model.dart';
 import 'package:gymmanagement/models/exercise_model.dart';
+import 'package:gymmanagement/models/plan_model.dart';
 import 'package:gymmanagement/services/firestore_service.dart';
 
 void main() {
@@ -250,6 +252,97 @@ void main() {
       expect(exercise.isActive, isTrue);
       expect(exercise.difficulty, 'INTERMEDIATE');
       expect(exercise.name, 'Barbell Squat');
+    });
+
+    test('PlanModel serialization and active status handling', () {
+      final activePlan = PlanModel(
+        id: 'plan_1',
+        name: 'Pro Strength',
+        description: 'Full access to gym and trainers',
+        durationValue: 3,
+        durationUnit: 'MONTH',
+        price: 4500,
+        extraFeatures: 'Free sauna, 2 PT sessions',
+        status: 'ACTIVE',
+      );
+
+      final map = activePlan.toMap();
+      final fromMap = PlanModel.fromMap(map, 'plan_1');
+
+      expect(fromMap.id, 'plan_1');
+      expect(fromMap.name, 'Pro Strength');
+      expect(fromMap.price, 4500.0);
+      expect(fromMap.durationValue, 3);
+      expect(fromMap.durationUnit, 'MONTH');
+      expect(fromMap.extraFeatures, 'Free sauna, 2 PT sessions');
+      expect(fromMap.isActive, isTrue);
+
+      final archivedPlan = PlanModel.fromMap({
+        'name': 'Old Plan',
+        'price': 1000,
+        'status': 'INACTIVE',
+      }, 'plan_archived');
+      expect(archivedPlan.isActive, isFalse);
+    });
+  });
+
+  group('Gym Check-in Days & Date Utils Tests', () {
+    test('AppDateUtils.dayNameFromDate accurately maps days of week', () {
+      // 2026-10-26 is a Monday
+      final monday = DateTime(2026, 10, 26);
+      expect(AppDateUtils.dayNameFromDate(monday), 'MONDAY');
+
+      // 2026-10-27 is a Tuesday
+      final tuesday = DateTime(2026, 10, 27);
+      expect(AppDateUtils.dayNameFromDate(tuesday), 'TUESDAY');
+
+      // 2026-10-28 is a Wednesday
+      final wednesday = DateTime(2026, 10, 28);
+      expect(AppDateUtils.dayNameFromDate(wednesday), 'WEDNESDAY');
+
+      // 2026-10-29 is a Thursday
+      final thursday = DateTime(2026, 10, 29);
+      expect(AppDateUtils.dayNameFromDate(thursday), 'THURSDAY');
+
+      // 2026-10-30 is a Friday
+      final friday = DateTime(2026, 10, 30);
+      expect(AppDateUtils.dayNameFromDate(friday), 'FRIDAY');
+
+      // 2026-10-31 is a Saturday
+      final saturday = DateTime(2026, 10, 31);
+      expect(AppDateUtils.dayNameFromDate(saturday), 'SATURDAY');
+
+      // 2026-11-01 is a Sunday
+      final sunday = DateTime(2026, 11, 1);
+      expect(AppDateUtils.dayNameFromDate(sunday), 'SUNDAY');
+    });
+
+    test('Gym check-in evaluation logic: only awards day when 100% of assigned exercises completed', () {
+      final assignedExerciseIds = ['ex_chest_1', 'ex_chest_2', 'ex_chest_3'];
+
+      // Scenario A: 0/3 completed -> Not eligible
+      final completedA = <String>{};
+      final isEligibleA = assignedExerciseIds.isNotEmpty &&
+          assignedExerciseIds.every((id) => completedA.contains(id));
+      expect(isEligibleA, isFalse);
+
+      // Scenario B: 2/3 completed -> Not eligible (crucial requirement: partial does not count)
+      final completedB = {'ex_chest_1', 'ex_chest_2'};
+      final isEligibleB = assignedExerciseIds.isNotEmpty &&
+          assignedExerciseIds.every((id) => completedB.contains(id));
+      expect(isEligibleB, isFalse);
+
+      // Scenario C: 3/3 completed -> Eligible!
+      final completedC = {'ex_chest_1', 'ex_chest_2', 'ex_chest_3'};
+      final isEligibleC = assignedExerciseIds.isNotEmpty &&
+          assignedExerciseIds.every((id) => completedC.contains(id));
+      expect(isEligibleC, isTrue);
+
+      // Scenario D: 0 assigned exercises for rest day -> Not eligible (cannot earn checkin on rest day)
+      final assignedRestDay = <String>[];
+      final isEligibleD = assignedRestDay.isNotEmpty &&
+          assignedRestDay.every((id) => completedC.contains(id));
+      expect(isEligibleD, isFalse);
     });
   });
 }

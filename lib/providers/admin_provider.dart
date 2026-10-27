@@ -154,6 +154,18 @@ class AdminProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updatePlan(PlanModel model) async {
+    await _service.updatePlan(model);
+    plans = await _service.getAllPlans();
+    notifyListeners();
+  }
+
+  Future<void> deletePlan(String planId, {bool archiveOnly = false}) async {
+    await _service.deletePlan(planId, archiveOnly: archiveOnly);
+    plans = await _service.getAllPlans();
+    notifyListeners();
+  }
+
   // Promotions
   Future<void> addPromotion(PromotionModel model) async {
     await _service.createPromotion(model);

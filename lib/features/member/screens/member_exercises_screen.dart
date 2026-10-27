@@ -69,18 +69,23 @@ class _MemberExercisesScreenState extends State<MemberExercisesScreen> {
                           )
                         : null,
                     filled: true,
-                    fillColor: AppColors.surfaceCard,
+                    fillColor: theme.colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.4),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.cardBorder),
+                      borderSide: BorderSide(
+                        color: theme.dividerColor.withValues(alpha: 0.2),
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.cardBorder),
+                      borderSide: BorderSide(
+                        color: theme.dividerColor.withValues(alpha: 0.2),
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -177,11 +182,14 @@ class _MemberExercisesScreenState extends State<MemberExercisesScreen> {
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         color: isSelected ? Colors.white : AppColors.textSecondary,
       ),
-      backgroundColor: AppColors.surfaceCard,
+      backgroundColor: theme.colorScheme.surfaceContainerHighest
+          .withValues(alpha: 0.35),
       selectedColor: theme.colorScheme.primary,
       checkmarkColor: Colors.white,
       side: BorderSide(
-        color: isSelected ? theme.colorScheme.primary : AppColors.cardBorder,
+        color: isSelected
+            ? theme.colorScheme.primary
+            : theme.dividerColor.withValues(alpha: 0.2),
       ),
       onSelected: (selected) {
         setState(() {
@@ -235,6 +243,7 @@ class _MemberExercisesScreenState extends State<MemberExercisesScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
@@ -276,40 +285,53 @@ class _MemberExercisesScreenState extends State<MemberExercisesScreen> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                Row(
+                Wrap(
+                  spacing: 14,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.accessibility_new_rounded,
-                      size: 15,
-                      color: AppColors.primary,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      ex.muscleGroup,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    const Icon(
-                      Icons.fitness_center_rounded,
-                      size: 15,
-                      color: AppColors.accent,
-                    ),
-                    const SizedBox(width: 5),
-                    Expanded(
-                      child: Text(
-                        ex.equipment,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.accessibility_new_rounded,
+                          size: 15,
+                          color: AppColors.primary,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            ex.muscleGroup,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                    if (ex.equipment.isNotEmpty)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.fitness_center_rounded,
+                            size: 15,
+                            color: AppColors.accent,
+                          ),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              ex.equipment,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
                 if (ex.instructions.isNotEmpty) ...[
@@ -334,8 +356,9 @@ class _MemberExercisesScreenState extends State<MemberExercisesScreen> {
   }
 
   Widget _buildImageFallback(ExerciseModel ex) {
+    final theme = Theme.of(context);
     return Container(
-      color: AppColors.surfaceCard,
+      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -346,9 +369,16 @@ class _MemberExercisesScreenState extends State<MemberExercisesScreen> {
               size: 36,
             ),
             const SizedBox(height: 6),
-            Text(
-              ex.name,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                ex.name,
+                style:
+                    const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -360,7 +390,7 @@ class _MemberExercisesScreenState extends State<MemberExercisesScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
       ),
       child: Row(
@@ -378,13 +408,16 @@ class _MemberExercisesScreenState extends State<MemberExercisesScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            ex.muscleGroup.toUpperCase(),
-            style: TextStyle(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.bold,
-              fontSize: 11,
-              letterSpacing: 1.1,
+          Expanded(
+            child: Text(
+              ex.muscleGroup.toUpperCase(),
+              style: TextStyle(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+                letterSpacing: 1.1,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

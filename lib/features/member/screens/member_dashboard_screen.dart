@@ -452,40 +452,79 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
           '${ex.sets} sets × ${ex.reps} reps • ${ex.durationMinutes} mins',
           style: const TextStyle(fontSize: 12),
         ),
-        trailing: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            textStyle: const TextStyle(fontSize: 12),
-          ),
-          onPressed: () async {
-            if (user != null) {
-              try {
-                await member.completeWorkoutExercise(
-                  memberId: user.id,
-                  workoutPlanExerciseId: ex.id,
-                );
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Marked workout as completed for today!'),
-                      backgroundColor: AppColors.success,
+        trailing: member.todayCompletedExerciseIds.contains(ex.id)
+            ? Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.success),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      size: 14,
+                      color: AppColors.success,
                     ),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(e.toString().replaceAll('Exception: ', '')),
-                      backgroundColor: AppColors.warning,
+                    SizedBox(width: 4),
+                    Text(
+                      'Done',
+                      style: TextStyle(
+                        color: AppColors.success,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  );
-                }
-              }
-            }
-          },
-          child: const Text('Done'),
-        ),
+                  ],
+                ),
+              )
+            : ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  minimumSize: const Size(60, 32),
+                  elevation: 0,
+                  textStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onPressed: () async {
+                  if (user != null) {
+                    try {
+                      await member.completeWorkoutExercise(
+                        memberId: user.id,
+                        workoutPlanExerciseId: ex.id,
+                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content:
+                                Text('Marked workout as completed for today!'),
+                            backgroundColor: AppColors.success,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content:
+                                Text(e.toString().replaceAll('Exception: ', '')),
+                            backgroundColor: AppColors.warning,
+                          ),
+                        );
+                      }
+                    }
+                  }
+                },
+                child: const Text('Done'),
+              ),
       ),
     );
   }

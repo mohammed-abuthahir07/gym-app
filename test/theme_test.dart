@@ -123,15 +123,19 @@ void main() {
 
       provider.applyPreset('Electric Blue');
       expect(provider.customTheme.primary, const Color(0xFF0070F3));
+      expect(provider.activePreset, 'Electric Blue');
 
       provider.applyPreset('Emerald Power');
       expect(provider.customTheme.primary, const Color(0xFF00C853));
+      expect(provider.activePreset, 'Emerald Power');
 
       provider.applyPreset('Gold Championship');
       expect(provider.customTheme.primary, const Color(0xFFFFB300));
+      expect(provider.activePreset, 'Gold Championship');
 
       provider.applyPreset('Clean Light');
       expect(provider.isDarkMode, isFalse);
+      expect(provider.activePreset, 'Clean Light');
     });
 
     test('ThemeProvider updateColor updates custom colors', () {
